@@ -1,0 +1,38 @@
+License Notice for Legal Agreement Templates
+============================================
+
+All files in this "templates" directory are legal agreement templates created
+by Common Paper, Inc. and are licensed under the Creative Commons Attribution
+4.0 International License (CC BY 4.0).
+
+  License: https://creativecommons.org/licenses/by/4.0/
+  Legal code: https://creativecommons.org/licenses/by/4.0/legalcode
+
+Attribution
+-----------
+
+Source: Common Paper (https://commonpaper.com), retrieved from the Common
+Paper GitHub organization (https://github.com/CommonPaper).
+
+  File                           Source repository
+  ----                           -----------------
+  Mutual-NDA-coverpage.md        https://github.com/CommonPaper/Mutual-NDA
+  Mutual-NDA.md                  https://github.com/CommonPaper/Mutual-NDA
+  CSA.md                         https://github.com/CommonPaper/CSA
+  sla.md                         https://github.com/CommonPaper/SLA
+  DPA.md                         https://github.com/CommonPaper/DPA
+  design-partner-agreement.md    https://github.com/CommonPaper/Design-Partner-Agreement
+  psa.md                         https://github.com/CommonPaper/PSA
+  Partnership-Agreement.md       https://github.com/CommonPaper/Partnership-Agreement
+  BAA.md                         https://github.com/CommonPaper/BAA
+  Software-License-Agreement.md  https://github.com/CommonPaper/Software-License-Agreement
+  Pilot-Agreement.md             https://github.com/CommonPaper/Pilot-Agreement
+  AI-Addendum.md                 https://github.com/CommonPaper/AI-Addendum
+
+The files are included here unmodified from their source repositories.
+Any modified versions produced by Prelegal from these templates are adaptations
+of Common Paper's work and must retain this attribution and indicate that
+changes were made, as required by CC BY 4.0.
+
+These templates are provided "as is", without warranties of any kind, and do
+not constitute legal advice.
