@@ -16,7 +16,13 @@ def settings(tmp_path: Path) -> Settings:
     (static_dir / "index.html").write_text("<h1>app</h1>")
     (static_dir / "login" / "index.html").write_text("<h1>login</h1>")
     (static_dir / "404.html").write_text("<h1>not found</h1>")
-    return Settings(db_path=tmp_path / "data" / "prelegal.db", static_dir=static_dir)
+    # _env_file=None keeps a developer's real .env (and API key) out of tests.
+    return Settings(
+        _env_file=None,
+        db_path=tmp_path / "data" / "prelegal.db",
+        static_dir=static_dir,
+        openrouter_api_key="test-key",
+    )
 
 
 @pytest.fixture

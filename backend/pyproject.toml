@@ -5,6 +5,7 @@ description = "FastAPI backend for Prelegal: serves the API and the statically b
 requires-python = ">=3.13"
 dependencies = [
     "fastapi>=0.143.2",
+    "litellm>=1.105.1",
     "pydantic-settings>=2.16.0",
     "sqlalchemy>=2.1.4",
     "uvicorn[standard]>=0.54.0",
@@ -18,3 +19,5 @@ dev = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["live: calls the real LLM through OpenRouter (needs OPENROUTER_API_KEY); run with `-m live`"]
+addopts = "-m 'not live'"

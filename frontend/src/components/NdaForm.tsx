@@ -1,6 +1,6 @@
 "use client";
 
-import { isValidYears, type NdaValues, type Party } from "@/lib/nda";
+import { LONG_TEXT_MAX, SHORT_TEXT_MAX, isValidYears, type NdaValues, type Party } from "@/lib/nda";
 import { Section, TextField, controlClass, labelClass } from "@/components/ui/fields";
 
 /**
@@ -97,15 +97,16 @@ function PartyFields({
   return (
     <Section title={title}>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <TextField id={`${id}-name`} label="Print name" value={party.name} onChange={set("name")} />
-        <TextField id={`${id}-title`} label="Title" value={party.title} onChange={set("title")} />
+        <TextField id={`${id}-name`} label="Print name" maxLength={SHORT_TEXT_MAX} value={party.name} onChange={set("name")} />
+        <TextField id={`${id}-title`} label="Title" maxLength={SHORT_TEXT_MAX} value={party.title} onChange={set("title")} />
       </div>
-      <TextField id={`${id}-company`} label="Company" value={party.company} onChange={set("company")} />
+      <TextField id={`${id}-company`} label="Company" maxLength={SHORT_TEXT_MAX} value={party.company} onChange={set("company")} />
       <TextField
         id={`${id}-address`}
         label="Notice address"
         hint="Use either an email or a postal address."
         rows={2}
+        maxLength={SHORT_TEXT_MAX}
         value={party.noticeAddress}
         onChange={set("noticeAddress")}
       />
@@ -133,6 +134,7 @@ export function NdaForm({
           label="Purpose"
           hint="How Confidential Information may be used."
           rows={3}
+          maxLength={LONG_TEXT_MAX}
           value={values.purpose}
           onChange={set("purpose")}
         />
@@ -173,6 +175,7 @@ export function NdaForm({
             id="governingLaw"
             label="Governing law"
             hint="State, e.g. Delaware."
+            maxLength={SHORT_TEXT_MAX}
             value={values.governingLaw}
             onChange={set("governingLaw")}
           />
@@ -180,6 +183,7 @@ export function NdaForm({
             id="jurisdiction"
             label="Jurisdiction"
             hint="e.g. courts located in New Castle, DE."
+            maxLength={SHORT_TEXT_MAX}
             value={values.jurisdiction}
             onChange={set("jurisdiction")}
           />
@@ -190,6 +194,7 @@ export function NdaForm({
           label="MNDA modifications"
           hint="Optional. Leave blank if there are none."
           rows={3}
+          maxLength={LONG_TEXT_MAX}
           value={values.modifications}
           onChange={set("modifications")}
         />
