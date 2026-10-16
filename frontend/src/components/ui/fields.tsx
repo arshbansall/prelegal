@@ -28,6 +28,7 @@ export function TextField({
   type = "text",
   autoComplete = "off",
   required,
+  minLength,
   maxLength,
 }: {
   id: string;
@@ -42,6 +43,7 @@ export function TextField({
   type?: "text" | "email" | "password" | "date";
   autoComplete?: string;
   required?: boolean;
+  minLength?: number;
   maxLength?: number;
 }) {
   const describedBy = [hint && `${id}-hint`, error && `${id}-error`].filter(Boolean).join(" ");
@@ -49,6 +51,7 @@ export function TextField({
     id,
     value,
     required,
+    minLength,
     maxLength,
     onChange: (e: { target: { value: string } }) => onChange(e.target.value),
     "aria-invalid": error ? true : undefined,
@@ -84,23 +87,32 @@ const buttonVariants = {
   /** Submit and primary actions use the brand's purple. */
   primary:
     "bg-secondary text-white shadow-sm hover:bg-secondary/90 focus-visible:outline-secondary",
+  /** Secondary actions next to a primary one, e.g. Save beside Download PDF. */
+  secondary:
+    "border border-slate-300 bg-white text-navy shadow-sm hover:border-slate-400 hover:bg-slate-50 " +
+    "focus-visible:outline-primary",
   /** Low-emphasis actions such as Sign out. */
   ghost: "text-navy hover:bg-slate-100 focus-visible:outline-primary",
+  /** Destructive actions, e.g. confirming a delete. */
+  danger: "bg-red-700 text-white shadow-sm hover:bg-red-800 focus-visible:outline-red-700",
 };
+
+export type ButtonVariant = keyof typeof buttonVariants;
+
+/** Button styling, also used for links that look like buttons. */
+export function buttonClass(variant: ButtonVariant = "primary", className = "") {
+  return (
+    "inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition " +
+    "focus-visible:outline-2 focus-visible:outline-offset-2 " +
+    "disabled:cursor-not-allowed disabled:opacity-60 aria-busy:cursor-wait " +
+    `${buttonVariants[variant]} ${className}`
+  );
+}
 
 export function Button({
   variant = "primary",
   className = "",
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: keyof typeof buttonVariants }) {
-  return (
-    <button
-      {...props}
-      className={
-        "rounded-md px-4 py-2 text-sm font-semibold transition focus-visible:outline-2 " +
-        "focus-visible:outline-offset-2 disabled:cursor-wait disabled:opacity-70 " +
-        `${buttonVariants[variant]} ${className}`
-      }
-    />
-  );
+}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant }) {
+  return <button {...props} className={buttonClass(variant, className)} />;
 }

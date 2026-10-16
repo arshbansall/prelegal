@@ -1,15 +1,19 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { AgreementForm } from "@/components/AgreementForm";
 import { DocumentChat } from "@/components/DocumentChat";
 import { DocumentChoices, DocumentPicker } from "@/components/DocumentPicker";
 import { DocumentPreview } from "@/components/DocumentPreview";
 import { NdaForm } from "@/components/NdaForm";
 import { useDocumentChat } from "@/components/useDocumentChat";
+import { useSaveDocument } from "@/components/useSaveDocument";
 import { Button } from "@/components/ui/fields";
+import { CheckIcon, DownloadIcon, ShieldIcon } from "@/components/ui/icons";
 import { TabPanel, Tabs } from "@/components/ui/Tabs";
 import { documentChosenMessage, type ChatResult } from "@/lib/chat";
+import { DISCLAIMER } from "@/lib/disclaimer";
 import {
   applyDocumentUpdates,
   documentMarkdown,
@@ -19,6 +23,8 @@ import {
   type AgreementDocument,
   type DocumentValues,
 } from "@/lib/documents";
+import { savedInput, type SavedDocument } from "@/lib/savedDocuments";
+import { setUnsavedChanges } from "@/lib/unsavedChanges";
 
 const noopSubscribe = () => () => {};
 
@@ -50,10 +56,24 @@ const EMPTY_DRAFT: Draft = { documentId: null, values: emptyValues };
  * The drafting page: chat or form on the left, live preview on the right.
  * The page itself never scrolls; each panel scrolls on its own, so the chat
  * input stays in view.
+ *
+ * `initial` resumes a saved document (the parent remounts this component, via
+ * `key`, to open another one); `onCreated` is told when a new draft is first saved.
  */
-export function DocumentCreator({ documents }: { documents: AgreementDocument[] }) {
-  const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
-  const [dateEdited, setDateEdited] = useState(false);
+export function DocumentCreator({
+  documents,
+  initial,
+  onCreated,
+}: {
+  documents: AgreementDocument[];
+  initial?: SavedDocument;
+  onCreated?: (id: number) => void;
+}) {
+  const router = useRouter();
+  const [draft, setDraft] = useState<Draft>(() =>
+    initial ? { documentId: initial.documentId, values: initial.values } : EMPTY_DRAFT,
+  );
+  const [dateEdited, setDateEdited] = useState(initial?.dateEdited ?? false);
   const [status, setStatus] = useState<DownloadStatus>("idle");
   const [tab, setTab] = useState<Tab>("chat");
   const [view, setView] = useState<View>("edit");
@@ -86,7 +106,32 @@ export function DocumentCreator({ documents }: { documents: AgreementDocument[] 
     });
   }
 
-  const chat = useDocumentChat({ documentId: draft.documentId, values, today, onResult: handleResult });
+  const chat = useDocumentChat({
+    documentId: draft.documentId,
+    values,
+    today,
+    onResult: handleResult,
+    initialMessages: initial?.messages,
+  });
+
+  const saver = useSaveDocument({
+    input: current ? savedInput(current.spec.id, values, chat.messages, dateEdited) : null,
+    initial,
+    onCreated,
+  });
+
+  // Warn before leaving the page with unsaved changes: in the app (see
+  // lib/unsavedChanges.ts), and when reloading or closing the tab.
+  useEffect(() => {
+    if (!saver.dirty) return;
+    setUnsavedChanges(true);
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => {
+      setUnsavedChanges(false);
+      window.removeEventListener("beforeunload", warn);
+    };
+  }, [saver.dirty]);
 
   /** Switches agreement without the AI, keeping the details every agreement shares. */
   function chooseDocument(id: string) {
@@ -98,7 +143,15 @@ export function DocumentCreator({ documents }: { documents: AgreementDocument[] 
   }
 
   function startOver() {
+    // A saved document is kept: start a new one on a fresh page. (Start over
+    // already asked for confirmation, so the unsaved-changes prompt is skipped.)
+    if (saver.savedId !== null) {
+      setUnsavedChanges(false);
+      router.push("/draft/");
+      return;
+    }
     chat.reset();
+    saver.reset();
     setDraft(EMPTY_DRAFT);
     setDateEdited(false);
     setStatus("idle");
@@ -106,6 +159,8 @@ export function DocumentCreator({ documents }: { documents: AgreementDocument[] 
 
   async function downloadPdf() {
     if (!current || !markdown) return;
+    // Downloading also saves, without waiting: the PDF doesn't depend on it.
+    if (saver.dirty) void saver.save();
     setStatus("generating");
     try {
       // Loaded on demand: the PDF renderer is large and only needed here.
@@ -138,16 +193,29 @@ export function DocumentCreator({ documents }: { documents: AgreementDocument[] 
         <DocumentPicker documents={specs} value={draft.documentId} onChange={chooseDocument} disabled={chat.pending} />
         <div className="ml-auto flex items-center gap-3">
           {/* Always rendered so screen readers announce changes to its text. */}
-          <p role="status" className="text-xs text-red-600">
+          <p role="status" className="text-xs">
             {status === "generating" && <span className="sr-only">Generating PDF…</span>}
-            {status === "error" && "Couldn’t generate the PDF. Please try again."}
+            {status === "error" ? (
+              <span className="text-red-600">Couldn’t generate the PDF. Please try again.</span>
+            ) : saver.status === "error" ? (
+              <span className="text-red-600">{saver.error}</span>
+            ) : (
+              saver.dirty && saver.savedId !== null && <span className="text-slate-500">Unsaved changes</span>
+            )}
           </p>
+          <SaveButton
+            disabled={!current}
+            saving={saver.status === "saving"}
+            saved={saver.savedId !== null && !saver.dirty}
+            onClick={() => void saver.save()}
+          />
           <Button
             type="button"
             onClick={downloadPdf}
             disabled={!current || status === "generating"}
             aria-busy={status === "generating"}
           >
+            <DownloadIcon className="size-4" />
             {status === "generating" ? "Generating PDF…" : "Download PDF"}
           </Button>
         </div>
@@ -173,6 +241,9 @@ export function DocumentCreator({ documents }: { documents: AgreementDocument[] 
               onSend={chat.send}
               onRetry={chat.retry}
               onStartOver={startOver}
+              startOverPrompt={
+                saver.savedId !== null ? "Start a new document? This one stays saved." : undefined
+              }
             />
           </TabPanel>
 
@@ -207,7 +278,10 @@ export function DocumentCreator({ documents }: { documents: AgreementDocument[] 
           className={`${view === "preview" ? "block" : "hidden"} relative min-h-0 overflow-y-auto overscroll-contain rounded-lg border border-slate-200 bg-white px-6 py-8 shadow-sm sm:px-10 sm:py-10 lg:block`}
         >
           {markdown ? (
-            <DocumentPreview {...markdown} />
+            <>
+              <DraftNotice />
+              <DocumentPreview {...markdown} />
+            </>
           ) : (
             <DocumentChoices
               documents={specs}
@@ -219,6 +293,48 @@ export function DocumentCreator({ documents }: { documents: AgreementDocument[] 
           )}
         </section>
       </div>
+    </div>
+  );
+}
+
+/** Save, with its progress; once saved it reads "Saved" until something changes. */
+function SaveButton({
+  disabled,
+  saving,
+  saved,
+  onClick,
+}: {
+  disabled: boolean;
+  saving: boolean;
+  saved: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <Button
+      type="button"
+      variant="secondary"
+      onClick={onClick}
+      disabled={disabled || saving || saved}
+      aria-busy={saving}
+    >
+      {saved && <CheckIcon className="size-4 text-green-700" />}
+      {saving ? "Saving…" : saved ? "Saved" : "Save"}
+    </Button>
+  );
+}
+
+/** The draft disclaimer, above the agreement in the preview. */
+function DraftNotice() {
+  return (
+    <div
+      role="note"
+      className="mx-auto mb-8 flex max-w-3xl gap-3 rounded-lg border border-accent/60 bg-accent/10 px-4 py-3 font-sans text-xs leading-relaxed text-slate-800"
+    >
+      <ShieldIcon className="size-5 shrink-0 text-navy" />
+      <p>
+        <strong className="font-semibold text-navy">Draft — subject to legal review. </strong>
+        {DISCLAIMER}
+      </p>
     </div>
   );
 }

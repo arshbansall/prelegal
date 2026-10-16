@@ -1,23 +1,23 @@
 /**
- * The signed-in user, kept in localStorage so it survives reloads.
- *
- * PL-8 only has a placeholder sign-in, so this is a UX convenience rather than
- * security: anyone can edit localStorage. Real authentication should move the
- * session to an httpOnly cookie or a token the backend verifies.
+ * The signed-in session: the backend's bearer token and the user it belongs
+ * to, kept in localStorage so it survives reloads. `lib/api.ts` sends the token
+ * with every request and clears the session when the backend rejects it
+ * (e.g. after the server restarted, since its database is temporary).
  *
  * Exposes a subscribe/getSnapshot pair for React's useSyncExternalStore.
  */
 
 export type User = { id: number; email: string };
+export type Session = { token: string; user: User };
 
-const STORAGE_KEY = "prelegal.user";
+const STORAGE_KEY = "prelegal.session";
 
 const listeners = new Set<() => void>();
 
-// getUser must return the same object while the stored value is unchanged,
+// getSession must return the same object while the stored value is unchanged,
 // as useSyncExternalStore requires a stable snapshot.
 let cachedRaw: string | null = null;
-let cachedUser: User | null = null;
+let cachedSession: Session | null = null;
 
 function storage(): Storage | null {
   try {
@@ -27,37 +27,42 @@ function storage(): Storage | null {
   }
 }
 
-function parseUser(raw: string | null): User | null {
+function parseSession(raw: string | null): Session | null {
   if (!raw) return null;
   try {
     const value = JSON.parse(raw);
-    return typeof value?.id === "number" && typeof value?.email === "string"
-      ? { id: value.id, email: value.email }
+    const { token, user } = value ?? {};
+    return typeof token === "string" && token && typeof user?.id === "number" && typeof user?.email === "string"
+      ? { token, user: { id: user.id, email: user.email } }
       : null;
   } catch {
     return null;
   }
 }
 
-export function getUser(): User | null {
+export function getSession(): Session | null {
   const raw = storage()?.getItem(STORAGE_KEY) ?? null;
   if (raw !== cachedRaw) {
     cachedRaw = raw;
-    cachedUser = parseUser(raw);
+    cachedSession = parseSession(raw);
   }
-  return cachedUser;
+  return cachedSession;
+}
+
+export function getToken(): string | null {
+  return getSession()?.token ?? null;
 }
 
 function notify() {
   listeners.forEach((listener) => listener());
 }
 
-export function setUser(user: User) {
-  storage()?.setItem(STORAGE_KEY, JSON.stringify(user));
+export function setSession(session: Session) {
+  storage()?.setItem(STORAGE_KEY, JSON.stringify(session));
   notify();
 }
 
-export function clearUser() {
+export function clearSession() {
   storage()?.removeItem(STORAGE_KEY);
   notify();
 }

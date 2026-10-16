@@ -4,6 +4,7 @@ from datetime import date
 from fastapi import APIRouter, HTTPException, Request
 
 from app import drafting, llm
+from app.auth import CurrentUser
 from app.config import Settings
 from app.schemas import ChatRequest, ChatResponse
 
@@ -13,8 +14,8 @@ router = APIRouter(prefix="/api", tags=["chat"])
 
 
 @router.post("/chat")
-def chat(body: ChatRequest, request: Request) -> ChatResponse:
-    """One turn of the drafting conversation.
+def chat(body: ChatRequest, request: Request, _user: CurrentUser) -> ChatResponse:
+    """One turn of the drafting conversation (signed-in users only).
 
     Stateless: the client sends the whole conversation, the agreement being
     drafted and its current values, and gets back the assistant's reply, the

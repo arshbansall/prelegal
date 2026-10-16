@@ -41,7 +41,7 @@ function TypingIndicator() {
 }
 
 /** "Start over", with an inline confirmation because it discards the draft. */
-function StartOver({ onConfirm }: { onConfirm: () => void }) {
+function StartOver({ prompt, onConfirm }: { prompt: string; onConfirm: () => void }) {
   const [confirming, setConfirming] = useState(false);
 
   if (!confirming) {
@@ -58,7 +58,7 @@ function StartOver({ onConfirm }: { onConfirm: () => void }) {
   }
   return (
     <div className="flex items-center gap-1 text-xs text-slate-600">
-      <span>Clear the chat and the document?</span>
+      <span>{prompt}</span>
       <Button
         variant="ghost"
         type="button"
@@ -85,6 +85,7 @@ export function DocumentChat({
   onSend,
   onRetry,
   onStartOver,
+  startOverPrompt = "Clear the chat and the document?",
 }: {
   messages: ChatMessage[];
   pending: boolean;
@@ -93,6 +94,8 @@ export function DocumentChat({
   onSend: (text: string) => void;
   onRetry: () => void;
   onStartOver: () => void;
+  /** The confirmation shown before starting over. */
+  startOverPrompt?: string;
 }) {
   const [draft, setDraft] = useState("");
   const logRef = useRef<HTMLOListElement>(null);
@@ -118,7 +121,7 @@ export function DocumentChat({
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex shrink-0 items-center justify-between gap-2 px-5 pt-3">
         <p className="text-xs text-slate-500">Answer in your own words. The document updates as you go.</p>
-        <StartOver onConfirm={onStartOver} />
+        <StartOver prompt={startOverPrompt} onConfirm={onStartOver} />
       </div>
 
       {/* `relative` keeps the messages' screen-reader labels inside this scroller, so they never make the page scroll. */}
@@ -135,7 +138,7 @@ export function DocumentChat({
         {pending && <TypingIndicator />}
         {complete && !pending && !error && (
           <li className="rounded-md border border-accent/60 bg-accent/10 px-3 py-2 text-xs text-slate-800">
-            All required fields are filled in. Review the document, then use Download PDF.
+            All required fields are filled in. Review the document, then save it or use Download PDF.
           </li>
         )}
       </ol>

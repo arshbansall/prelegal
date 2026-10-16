@@ -1,18 +1,55 @@
 import re
-from datetime import date
+from datetime import UTC, date, datetime
 from typing import Annotated, Any, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator, model_validator
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    computed_field,
+    field_validator,
+    model_validator,
+)
 from pydantic.alias_generators import to_camel
+from pydantic_core import PydanticCustomError
 
-from app.documents import DocumentId
+from app.documents import DOCUMENTS, DocumentId
 
-Email = Annotated[str, StringConstraints(strip_whitespace=True, to_lower=True, min_length=1, max_length=254)]
+# --- Accounts -------------------------------------------------------------------
+
+
+def _email_address(value: str) -> str:
+    if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", value):
+        raise PydanticCustomError("email", "Enter a valid email address.")
+    return value
+
+
+Email = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, to_lower=True, max_length=254),
+    AfterValidator(_email_address),
+]
+
+PASSWORD_MIN = 8
+PASSWORD_MAX = 128
 
 
 class LoginRequest(BaseModel):
     email: Email
-    password: str = ""
+    password: str = Field(min_length=1, max_length=PASSWORD_MAX)
+
+
+class SignupRequest(LoginRequest):
+    password: str = Field(min_length=PASSWORD_MIN, max_length=PASSWORD_MAX)
+
+    @field_validator("password")
+    @classmethod
+    def _not_blank(cls, password: str) -> str:
+        if not password.strip():
+            raise PydanticCustomError("password", "Choose a password that isn’t only spaces.")
+        return password
 
 
 class UserOut(BaseModel):
@@ -20,6 +57,13 @@ class UserOut(BaseModel):
 
     id: int
     email: str
+
+
+class AuthOut(BaseModel):
+    """A new sign-in: the bearer token for later requests, and the user."""
+
+    token: str
+    user: UserOut
 
 
 class CamelModel(BaseModel):
@@ -209,3 +253,52 @@ class ChatResponse(CamelModel):
     updates: dict[str, Any]
     # Whether every required field is filled once `updates` are applied.
     complete: bool
+
+
+# --- Saved documents ----------------------------------------------------------------
+
+
+def _as_utc(value: datetime) -> datetime:
+    # SQLite returns naive datetimes; they are stored in UTC.
+    return value if value.tzinfo else value.replace(tzinfo=UTC)
+
+
+UtcDatetime = Annotated[datetime, AfterValidator(_as_utc)]
+
+# Enough for a long drafting conversation; the chat sends only the latest 40 to the AI.
+SAVED_MESSAGES_MAX = 200
+
+
+class SavedDocumentIn(CamelModel):
+    """What the browser saves: enough to resume drafting where the user left off."""
+
+    document_id: DocumentId
+    values: DocumentValues
+    messages: list[ChatMessage] = Field(default=[], max_length=SAVED_MESSAGES_MAX)
+    # Whether the effective date was set (otherwise it follows today's date).
+    date_edited: bool = False
+
+
+class SavedDocumentSummary(CamelModel):
+    """Read from a SavedDocument row."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    document_id: str
+    # Derived from the parties, e.g. "Acme Corp & Beta LLC" (see saved_documents.title_for).
+    title: str
+    created_at: UtcDatetime
+    updated_at: UtcDatetime
+
+    @computed_field
+    @property
+    def document_name(self) -> str:
+        """The agreement's name, e.g. "Mutual Non-Disclosure Agreement"."""
+        return DOCUMENTS[self.document_id].name
+
+
+class SavedDocumentOut(SavedDocumentSummary):
+    values: DocumentValues
+    messages: list[ChatMessage]
+    date_edited: bool

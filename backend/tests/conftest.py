@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 
 from app.config import Settings
 from app.main import create_app
+from tests.accounts import sign_in_new_user
 
 
 @pytest.fixture
@@ -30,3 +31,9 @@ def client(settings: Settings) -> Iterator[TestClient]:
     # Entering the context runs the app's lifespan, which creates the database.
     with TestClient(create_app(settings)) as client:
         yield client
+
+
+@pytest.fixture
+def auth_client(client: TestClient) -> TestClient:
+    """`client`, signed in as a new user (ada@acme.com)."""
+    return sign_in_new_user(client)

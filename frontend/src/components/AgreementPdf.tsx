@@ -9,12 +9,13 @@
 import { Document, Link, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import type { Token, Tokens } from "marked";
 import type { ReactNode } from "react";
+import { DISCLAIMER_SHORT } from "@/lib/disclaimer";
 import { lexMarkdown } from "@/lib/documents";
 
 const styles = StyleSheet.create({
   page: {
     paddingTop: 54,
-    paddingBottom: 64,
+    paddingBottom: 72,
     paddingHorizontal: 60,
     fontFamily: "Times-Roman",
     fontSize: 10.5,
@@ -46,6 +47,17 @@ const styles = StyleSheet.create({
     borderBottom: "1pt solid #9ca3af",
   },
   headerCell: { fontFamily: "Times-Bold", backgroundColor: "#f3f4f6" },
+  // The draft disclaimer, just above the page footer on every page.
+  disclaimer: {
+    position: "absolute",
+    bottom: 42,
+    left: 60,
+    right: 60,
+    fontFamily: "Times-Italic",
+    fontSize: 8.5,
+    color: "#6b7280",
+    textAlign: "center",
+  },
   footer: {
     position: "absolute",
     bottom: 30,
@@ -192,6 +204,9 @@ function AgreementPage({ markdown, title }: { markdown: string; title: string })
   return (
     <Page size="LETTER" style={styles.page}>
       <View style={styles.body}>{renderBlocks(lexMarkdown(markdown))}</View>
+      <Text style={styles.disclaimer} fixed>
+        {DISCLAIMER_SHORT}
+      </Text>
       <Text
         style={styles.footer}
         fixed
@@ -215,7 +230,7 @@ export function AgreementPdf({
   standardTerms: string;
 }) {
   return (
-    <Document title={name} author="Prelegal" creator="Prelegal">
+    <Document title={name} subject={DISCLAIMER_SHORT} author="Prelegal" creator="Prelegal">
       <AgreementPage markdown={coverPage} title={`${shortName} Cover Page`} />
       <AgreementPage markdown={standardTerms} title={`${shortName} Standard Terms`} />
     </Document>
