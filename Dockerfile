@@ -4,11 +4,12 @@
 # --- Stage 1: build the frontend -------------------------------------------
 FROM node:24-slim AS frontend
 
-# The frontend reads ../templates at build time, so keep the repo layout.
+# The frontend reads ../templates and ../documents.json at build time, so keep the repo layout.
 WORKDIR /src/frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY templates /src/templates
+COPY documents.json /src/documents.json
 COPY frontend ./
 RUN npm run build
 
@@ -27,6 +28,7 @@ COPY backend/pyproject.toml backend/uv.lock backend/.python-version ./
 RUN uv sync --frozen --no-dev --no-install-project
 
 COPY backend/app ./app
+COPY documents.json ./documents.json
 COPY --from=frontend /src/frontend/out ./static
 
 RUN useradd --create-home --uid 1000 prelegal \
@@ -36,7 +38,8 @@ USER prelegal
 
 ENV PATH="/app/.venv/bin:$PATH" \
     PRELEGAL_DB_PATH=/app/data/prelegal.db \
-    PRELEGAL_STATIC_DIR=/app/static
+    PRELEGAL_STATIC_DIR=/app/static \
+    PRELEGAL_DOCUMENTS_PATH=/app/documents.json
 
 EXPOSE 8000
 HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=3 \

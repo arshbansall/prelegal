@@ -3,7 +3,7 @@
 ## Overview
 
 This is a SaaS product to allow users to draft legal agreements based on templates in the templates directory.
-The user carries out AI chat in order to establish what document they want and how to fill in the fields (built for the Mutual NDA only so far).
+The user carries out AI chat in order to establish what document they want and how to fill in the fields (built for every document in the catalog).
 The available documents are covered in the catalog.json file in the project root, included here:
 
 @catalog.json
@@ -70,9 +70,16 @@ Done:
 - **PL-9:** AI chat fills in the Mutual NDA. The left panel of `/` has a Chat tab (default) and a Fields tab (the PL-7 form, still editable); the preview and PDF are unchanged.
   - `POST /api/chat` is stateless: the browser sends the conversation, the current NDA values and its local date, and gets back `{reply, updates, complete}`. `updates` holds only the changed fields; the server computes `complete` from the required fields. The chat lives in memory only.
   - `backend/app/llm.py` is the only module that calls the LLM (`structured_completion`, raising `LLMUnavailable` → 503 or `LLMError` → 502). `backend/app/nda_chat.py` has the system prompt and the required fields; the request/response and Structured Outputs models are in `schemas.py`. `OPENROUTER_API_KEY` is read by `Settings` from the environment or the repo's `.env`.
-  - Frontend: `components/useNdaChat.ts` (chat state), `components/NdaChat.tsx`, `components/ui/Tabs.tsx`, `lib/chat.ts`; `applyNdaUpdates` in `lib/nda.ts`.
+  - Frontend: `components/ui/Tabs.tsx`, `lib/chat.ts`; `applyNdaUpdates` in `lib/nda.ts`. The chat components were generalized in PL-10.
+- **PL-10:** Every agreement in `catalog.json` can be drafted, and the page no longer scrolls as a whole.
+  - `documents.json` (repo root) defines each agreement: id, names, templates, party roles, whether it has governing law, and its key `terms`. The backend loads it at startup (`app/documents.py`; `PRELEGAL_DOCUMENTS_PATH` in Docker) and the frontend reads it at build time (`readDocuments` in `lib/templates.ts`). Tests keep it consistent with `catalog.json` and with the variables each template highlights.
+  - The Mutual NDA keeps its typed fields and Common Paper's own cover page (`nda_chat.py`, `lib/nda.ts`, `NdaForm`). The others get a generated cover page (`buildCoverPage` in `lib/documents.ts`) and a form generated from their terms (`AgreementForm`).
+  - Values: one `DocumentValues` = the NDA fields + `terms` (by key) for the other agreements. The parties, effective date, governing law and jurisdiction are shared and carried over when switching agreements (`switchDocument` in `lib/documents.ts`, `switch_document` in `drafting.py`).
+  - `POST /api/chat` takes `{messages, documentId (null until chosen), values, today}` and returns `{reply, documentId, updates, complete}`. `app/drafting.py` builds the prompt and runs the turn: with no document, a `SelectionTurn` asks what the user needs or picks one; every turn model has `documentId` first, and when it names a different agreement the turn is re-run for that agreement (at most 2 LLM calls). Unsupported requests get the closest supported agreement offered. Per-agreement Structured Outputs models are generated in `agreement_chat.py`.
+  - Frontend: `DocumentCreator` (page state and layout), `DocumentChat` + `useDocumentChat`, `DocumentPicker` (menu, plus cards before anything is chosen), `DocumentPreview`, `AgreementPdf` (numbers nested clauses 1.1, 1.2).
+  - Layout: the app shell is exactly the viewport's height; the chat (input pinned at the bottom), the Fields tab and the preview each scroll on their own. Below `lg` an Edit | Preview switch shows one panel at a time.
 
-Not built yet: real sign up and sign in, document persistence, and the other agreement types (including choosing the document in chat).
+Not built yet: real sign up and sign in, and document persistence.
 
 Commands:
 - Run: `scripts/start-mac.sh` / `scripts/stop-mac.sh` (or the Linux/Windows versions) → http://localhost:8000

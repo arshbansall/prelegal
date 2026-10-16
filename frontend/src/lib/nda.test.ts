@@ -7,7 +7,6 @@ import {
   fillCoverPage,
   formatDate,
   isValidYears,
-  pdfFilename,
   type NdaValues,
 } from "@/lib/nda";
 import { readTemplate } from "@/lib/templates";
@@ -150,16 +149,6 @@ describe("isValidYears", () => {
 
   it("rejects blank, zero, fractional and oversized values", () => {
     for (const years of ["", "0", "01", "2.5", "-1", "1e21", "1000"]) expect(isValidYears(years)).toBe(false);
-  });
-});
-
-describe("pdfFilename", () => {
-  it("includes the parties' companies", () => {
-    expect(pdfFilename(completeValues)).toBe("Mutual-NDA-Acme-Inc-Beta-LLC.pdf");
-  });
-
-  it("falls back to a generic name", () => {
-    expect(pdfFilename(defaultNdaValues)).toBe("Mutual-NDA.pdf");
   });
 });
 

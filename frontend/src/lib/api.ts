@@ -4,7 +4,7 @@
  * development `next dev` proxies `/api` to the backend (see next.config.ts).
  */
 import { recentMessages, type ChatMessage, type ChatResult } from "@/lib/chat";
-import type { NdaValues } from "@/lib/nda";
+import type { DocumentValues } from "@/lib/documents";
 import type { User } from "@/lib/session";
 
 export class ApiError extends Error {
@@ -45,13 +45,19 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
 
 /**
  * One turn of the AI chat. The backend is stateless, so this sends the
- * conversation so far and the document as the user sees it.
+ * conversation so far, the agreement being drafted (null until one is chosen)
+ * and the document as the user sees it.
  * `today` is the user's local date (yyyy-mm-dd), for resolving relative dates.
  */
-export function sendChat(messages: ChatMessage[], values: NdaValues, today: string): Promise<ChatResult> {
+export function sendChat(
+  messages: ChatMessage[],
+  documentId: string | null,
+  values: DocumentValues,
+  today: string,
+): Promise<ChatResult> {
   return apiFetch<ChatResult>("/api/chat", {
     method: "POST",
-    body: JSON.stringify({ messages: recentMessages(messages), values, today: today || null }),
+    body: JSON.stringify({ messages: recentMessages(messages), documentId, values, today: today || null }),
   });
 }
 

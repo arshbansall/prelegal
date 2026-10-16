@@ -5,6 +5,8 @@ from typing import Annotated, Any, Literal, Self
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator, model_validator
 from pydantic.alias_generators import to_camel
 
+from app.documents import DocumentId
+
 Email = Annotated[str, StringConstraints(strip_whitespace=True, to_lower=True, min_length=1, max_length=254)]
 
 
@@ -63,7 +65,25 @@ class NdaValues(CamelModel):
     party2: Party = Party()
 
 
-def _iso_date_or_none(value: str | None) -> str | None:
+TermKey = Annotated[str, Field(pattern=r"^[a-z][A-Za-z]*$", max_length=50)]
+
+
+class DocumentValues(NdaValues):
+    """The document being drafted (mirrors DocumentValues in frontend/src/lib/documents.ts).
+
+    The parties, effective date, governing law and jurisdiction are shared by
+    every agreement; the other NDA fields apply only to the NDA, and `terms`
+    holds the key terms of the other agreements (see documents.json).
+    """
+
+    terms: dict[TermKey, LongText] = Field(default={}, max_length=50)
+
+
+# DocumentValues fields every agreement has, kept when the user switches agreements.
+SHARED_FIELDS = frozenset({"party1", "party2", "effective_date", "governing_law", "jurisdiction"})
+
+
+def iso_date_or_none(value: str | None) -> str | None:
     if value in (None, ""):
         return value
     try:
@@ -81,7 +101,7 @@ def _years_or_none(value: str | None) -> str | None:
     return value.strip() if value is not None and is_valid_years(value) else None
 
 
-def _at_most(limit: int):
+def at_most(limit: int):
     def check(value: str | None) -> str | None:
         return value if value is None or len(value) <= limit else None
 
@@ -102,10 +122,19 @@ class PartyUpdates(CamelModel):
     company: str | None
     notice_address: str | None
 
-    _check_length = field_validator("*")(_at_most(SHORT_TEXT_MAX))
+    _check_length = field_validator("*")(at_most(SHORT_TEXT_MAX))
 
 
-class NdaUpdates(CamelModel):
+class Updates(CamelModel):
+    """Base for each agreement's updates model (NdaUpdates, and the generated ones in agreement_chat)."""
+
+    def changes(self) -> dict[str, Any]:
+        """The changed fields as camelCase JSON, omitting nulls and unchanged parties or terms."""
+        data = self.model_dump(by_alias=True, exclude_none=True)
+        return {key: value for key, value in data.items() if value != {}}
+
+
+class NdaUpdates(Updates):
     purpose: str | None
     effective_date: str | None = Field(description="yyyy-mm-dd")
     mnda_term_type: MndaTermType | None
@@ -118,15 +147,33 @@ class NdaUpdates(CamelModel):
     party1: PartyUpdates
     party2: PartyUpdates
 
-    _check_date = field_validator("effective_date")(_iso_date_or_none)
+    _check_date = field_validator("effective_date")(iso_date_or_none)
     _check_years = field_validator("mnda_term_years", "confidentiality_years")(_years_or_none)
-    _check_short = field_validator("governing_law", "jurisdiction")(_at_most(SHORT_TEXT_MAX))
-    _check_long = field_validator("purpose", "modifications")(_at_most(LONG_TEXT_MAX))
+    _check_short = field_validator("governing_law", "jurisdiction")(at_most(SHORT_TEXT_MAX))
+    _check_long = field_validator("purpose", "modifications")(at_most(LONG_TEXT_MAX))
 
-    def changes(self) -> dict[str, Any]:
-        """The changed fields as camelCase JSON, omitting nulls and unchanged parties."""
-        data = self.model_dump(by_alias=True, exclude_none=True)
-        return {key: value for key, value in data.items() if value != {}}
+
+class Turn(CamelModel):
+    """Base for what the model returns each turn (via Structured Outputs).
+
+    Subclasses declare `updates` (if any) and then `reply`, so the model
+    decides on the document first, then extracts the user's values, and only
+    then writes its reply; extracting before replying makes it more reliable
+    at capturing all of them.
+    """
+
+    document_id: DocumentId | None = Field(
+        description="An agreement's id, only to start or switch to it; otherwise null"
+    )
+
+    @field_validator("reply", check_fields=False)
+    @classmethod
+    def _usable_reply(cls, reply: str) -> str:
+        """The reply joins the conversation the client sends back, so it must be a valid message."""
+        reply = reply.strip()
+        if not reply:
+            raise ValueError("The reply is empty.")
+        return reply[:MESSAGE_MAX]
 
 
 # --- Chat API -----------------------------------------------------------------
@@ -139,7 +186,9 @@ class ChatMessage(CamelModel):
 
 class ChatRequest(CamelModel):
     messages: list[ChatMessage] = Field(min_length=1, max_length=60)
-    values: NdaValues
+    # The agreement being drafted; None until the user has chosen one.
+    document_id: DocumentId | None = None
+    values: DocumentValues
     # The user's local date; defaults to the server's date.
     today: date | None = None
 
@@ -152,7 +201,11 @@ class ChatRequest(CamelModel):
 
 class ChatResponse(CamelModel):
     reply: str
-    # Only the fields the AI changed (a partial NdaValues; see NdaUpdates.changes).
+    # The agreement being drafted after this turn. When it differs from the
+    # request's, the client switches first (keeping the shared fields), then
+    # applies `updates`.
+    document_id: str | None
+    # Only the fields the AI changed (a partial DocumentValues).
     updates: dict[str, Any]
     # Whether every required field is filled once `updates` are applied.
     complete: bool

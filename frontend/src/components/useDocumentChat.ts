@@ -2,22 +2,24 @@
 
 import { useRef, useState } from "react";
 import { ApiError, sendChat } from "@/lib/api";
-import { GREETING, type ChatMessage } from "@/lib/chat";
-import type { NdaUpdates, NdaValues } from "@/lib/nda";
+import { GREETING, type ChatMessage, type ChatResult } from "@/lib/chat";
+import type { DocumentValues } from "@/lib/documents";
 
 /**
- * State for the AI chat that drafts the NDA. The caller owns the document:
- * each turn sends the current `values`, and `onUpdates` receives the fields
- * the AI changed.
+ * State for the AI chat that drafts the agreement. The caller owns the
+ * document: each turn sends the agreement and its current `values`, and
+ * `onResult` receives the agreement after the turn and the fields the AI changed.
  */
-export function useNdaChat({
+export function useDocumentChat({
+  documentId,
   values,
   today,
-  onUpdates,
+  onResult,
 }: {
-  values: NdaValues;
+  documentId: string | null;
+  values: DocumentValues;
   today: string;
-  onUpdates: (updates: NdaUpdates) => void;
+  onResult: (result: ChatResult) => void;
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([GREETING]);
   const [pending, setPending] = useState(false);
@@ -32,11 +34,11 @@ export function useNdaChat({
     setPending(true);
     setError(null);
     try {
-      const result = await sendChat(history, values, today);
+      const result = await sendChat(history, documentId, values, today);
       if (id !== latestRequest.current) return;
       setMessages([...history, { role: "assistant", content: result.reply }]);
       setComplete(result.complete);
-      onUpdates(result.updates);
+      onResult(result);
     } catch (e) {
       if (id !== latestRequest.current) return;
       setError(e instanceof ApiError ? e.message : "Something went wrong. Please try again.");
@@ -59,6 +61,13 @@ export function useNdaChat({
     if (!pending) void request(messages);
   }
 
+  /** Adds an assistant message without calling the AI, e.g. after the user picks an agreement. */
+  function addAssistantMessage(message: ChatMessage) {
+    setMessages((current) => [...current, message]);
+    setError(null);
+    setComplete(false);
+  }
+
   function reset() {
     latestRequest.current++;
     setMessages([GREETING]);
@@ -67,5 +76,5 @@ export function useNdaChat({
     setComplete(false);
   }
 
-  return { messages, pending, error, complete, send, retry, reset };
+  return { messages, pending, error, complete, send, retry, addAssistantMessage, reset };
 }
