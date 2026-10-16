@@ -26,7 +26,7 @@ There is an OPENROUTER_API_KEY in the .env file in the project root.
 
 ## Technical design
 
-This is the target architecture. It is in place except real sign up and sign in (see Implementation status).
+This is the architecture, and it is fully in place (see Implementation status).
 
 The entire project should be packaged into a Docker container.  
 The backend should be in backend/ and be a uv project, using FastAPI.  
@@ -58,14 +58,14 @@ Backend available at http://localhost:8000
 
 These are Tailwind theme tokens in `frontend/src/app/globals.css`: `accent`, `primary`, `secondary`, `navy`, `muted` (e.g. `bg-secondary`, `text-navy`). Blue and gray are below 4.5:1 contrast on white, so use them for accents and borders, not body text.
 
-## Implementation status (as of 2026-10-16)
+## Implementation status (as of 2026-10-17)
 
 Done:
 - **PL-6:** `templates/` holds the Common Paper agreement templates (CC BY 4.0) with `templates/LICENSE.txt`; `catalog.json` indexes them.
 - **PL-7:** Mutual NDA creator at `/`. Form → live preview → PDF generated in the browser (`@react-pdf/renderer`). It reads the two Mutual NDA templates from `../templates` at build time. Logic is in `frontend/src/lib/nda.ts`. (Generalized to every agreement in PL-10.)
 - **PL-8:** V1 foundation.
   - `backend/`: FastAPI + SQLAlchemy over SQLite (Python 3.13, uv). The database is recreated on every startup and has a `users` table. Endpoints: `GET /api/health` and `POST /api/auth/login`. All other paths serve `frontend/out`.
-  - Sign-in is a placeholder: any password is accepted and the user is created on first sign-in. The browser keeps `{id, email}` in localStorage. Pages in `frontend/src/app/(app)/` require sign-in (checked in the browser) and share the app shell; `/login/` is the sign-in page.
+  - PL-8's placeholder sign-in was replaced by real accounts in PL-11. Pages in `frontend/src/app/(app)/` require sign-in (checked in the browser) and share the app shell.
   - `Dockerfile` (one container on :8000, non-root, `.env` passed at runtime) and the `scripts/` start/stop scripts. Stopping removes the container, so each start has a fresh database.
 - **PL-9:** AI chat fills in the Mutual NDA. The left panel of `/` has a Chat tab (default) and a Fields tab (the PL-7 form, still editable); the preview and PDF are unchanged.
   - `POST /api/chat` is stateless: the browser sends the conversation, the current NDA values and its local date, and gets back `{reply, updates, complete}`. `updates` holds only the changed fields; the server computes `complete` from the required fields. The chat lives in memory only.
@@ -79,7 +79,14 @@ Done:
   - Frontend: `DocumentCreator` (page state and layout), `DocumentChat` + `useDocumentChat`, `DocumentPicker` (menu, plus cards before anything is chosen), `DocumentPreview`, `AgreementPdf` (numbers nested clauses 1.1, 1.2).
   - Layout: the app shell is exactly the viewport's height; the chat (input pinned at the bottom), the Fields tab and the preview each scroll on their own. Below `lg` an Edit | Preview switch shows one panel at a time.
 
-Not built yet: real sign up and sign in, and document persistence.
+- **PL-11:** Accounts, saved documents, a landing page and a disclaimer.
+  - Auth (`backend/app/auth.py`): passwords hashed with stdlib scrypt; sign-up and sign-in issue an opaque bearer token, and only its SHA-256 is stored in the `sessions` table. `POST /api/auth/signup` (409 for a taken email), `POST /api/auth/login` (one 401 for an unknown email or a wrong password), `GET /api/auth/me`, `POST /api/auth/logout`. Routes that need a user take `CurrentUser`; `/api/chat` and `/api/documents` do. Sessions end when the server restarts (the database is recreated).
+  - Saved documents (`routers/saved_documents.py`, `SavedDocument` model, at `/api/documents`; not the catalog in `app/documents.py`): list, create, get, replace, delete. Each stores the agreement id, `DocumentValues`, the chat messages and `dateEdited`; the title comes from the parties' companies. Another user's document is a 404.
+  - Frontend session: `lib/session.ts` keeps `{token, user}` in localStorage (`prelegal.session`). `apiFetch` sends `Authorization: Bearer` and clears the session on a 401 (except from login/signup), which sends the user to `/login/`. `RequireAuth` checks the token with `/api/auth/me` once per page load.
+  - Routes: `/` is the public landing page; `/login/` and `/signup/` share `AuthForm`; `/draft/` drafts a new document and `/draft/?id=N` resumes a saved one (`DraftPage`, inside `Suspense` for `useSearchParams`); `/documents/` lists saved documents (`DocumentList`). The first save of a new draft puts its id in the URL with `history.replaceState`, without remounting the page.
+  - Saving is explicit: Save in the drafting toolbar (Download PDF also saves). `useSaveDocument` serializes saves and tracks unsaved changes with `saveKey` (`lib/savedDocuments.ts`). Leaving a draft with unsaved changes asks first: in-app links and Sign out through `lib/unsavedChanges.ts`, reloads and closing the tab through `beforeunload`.
+  - Disclaimer: one text in `lib/disclaimer.ts`, shown above the preview, on every PDF page, and on the landing, auth and documents pages.
+  - UI building blocks: `components/ui/layout.tsx` (Card, Callout, PageHeader, EmptyState, Spinner, PageSpinner, Skeleton), `components/ui/icons.tsx`, and `buttonClass` plus secondary/danger variants in `fields.tsx`.
 
 Commands:
 - Run: `scripts/start-mac.sh` / `scripts/stop-mac.sh` (or the Linux/Windows versions) → http://localhost:8000
@@ -88,6 +95,7 @@ Commands:
 
 Conventions:
 - New API routes go in `backend/app/routers/` under the `/api` prefix; new models go in `backend/app/models.py`. Call LLMs through `backend/app/llm.py`, and mock `app.llm.completion` in tests.
-- New signed-in pages go in `frontend/src/app/(app)/`. Call the API through `frontend/src/lib/api.ts` with relative `/api/...` paths. Shared form controls are in `frontend/src/components/ui/fields.tsx`.
+- New signed-in pages go in `frontend/src/app/(app)/`; public pages go directly in `frontend/src/app/`. Call the API through `frontend/src/lib/api.ts` with relative `/api/...` paths. Shared form controls are in `frontend/src/components/ui/fields.tsx` and page building blocks in `components/ui/layout.tsx`.
+- Backend tests that need a user use the `auth_client` fixture or the helpers in `backend/tests/accounts.py`.
 - To add an agreement: put its template in `templates/`, list it in `catalog.json`, and add an entry to `documents.json` whose `terms` cover every variable the template highlights (`backend/tests/test_documents.py` checks this). Agreements without a cover page template get a generated one, a form and a Structured Outputs model automatically.
 - `frontend/` is Next.js 16: read `frontend/AGENTS.md` and the bundled docs before changing it. Static export means no server components that need a request, no route handlers or server actions, and no middleware.

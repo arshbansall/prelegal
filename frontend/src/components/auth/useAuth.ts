@@ -1,8 +1,8 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { login } from "@/lib/api";
-import { clearUser, getUser, setUser, subscribe, type User } from "@/lib/session";
+import { login, logout, signup } from "@/lib/api";
+import { clearSession, getSession, setSession, subscribe, type Session, type User } from "@/lib/session";
 
 type AuthStatus = "loading" | "authenticated" | "anonymous";
 
@@ -10,18 +10,33 @@ type AuthStatus = "loading" | "authenticated" | "anonymous";
 const getServerSnapshot = () => undefined;
 
 async function signIn(email: string, password: string): Promise<User> {
-  const user = await login(email, password);
-  setUser(user);
-  return user;
+  const session = await login(email, password);
+  setSession(session);
+  return session.user;
+}
+
+async function signUp(email: string, password: string): Promise<User> {
+  const session = await signup(email, password);
+  setSession(session);
+  return session.user;
+}
+
+function signOut() {
+  // The request reads the token before the session is cleared; failures don't
+  // matter, since this browser forgets the token either way.
+  logout().catch(() => {});
+  clearSession();
 }
 
 export function useAuth(): {
   status: AuthStatus;
   user: User | null;
+  token: string | null;
   signIn: typeof signIn;
-  signOut: () => void;
+  signUp: typeof signUp;
+  signOut: typeof signOut;
 } {
-  const user = useSyncExternalStore<User | null | undefined>(subscribe, getUser, getServerSnapshot);
-  const status = user === undefined ? "loading" : user ? "authenticated" : "anonymous";
-  return { status, user: user ?? null, signIn, signOut: clearUser };
+  const session = useSyncExternalStore<Session | null | undefined>(subscribe, getSession, getServerSnapshot);
+  const status = session === undefined ? "loading" : session ? "authenticated" : "anonymous";
+  return { status, user: session?.user ?? null, token: session?.token ?? null, signIn, signUp, signOut };
 }

@@ -9,7 +9,7 @@ const geistSans = Geist({
 
 export const metadata: Metadata = {
   title: { default: "Prelegal", template: "%s · Prelegal" },
-  description: "Draft common legal agreements from Common Paper templates.",
+  description: "Draft common legal agreements with an AI assistant, from Common Paper templates.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

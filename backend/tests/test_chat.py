@@ -9,9 +9,9 @@ from app import llm
 from app.agreement_chat import turn_model
 from app.config import Settings
 from app.drafting import SelectionTurn
-from app.main import create_app
 from app.nda_chat import NdaChatTurn
 from app.schemas import NdaUpdates, PartyUpdates
+from tests.accounts import signed_in_client
 
 GREETING = {"role": "assistant", "content": "Hi! Who are the two parties?"}
 
@@ -112,7 +112,15 @@ def chat_body(
     }
 
 
-def test_returns_reply_and_only_changed_fields(client: TestClient, fake_llm: FakeCompletion) -> None:
+def test_chat_requires_sign_in(client: TestClient, fake_llm: FakeCompletion) -> None:
+    response = client.post("/api/chat", json=chat_body())
+
+    assert response.status_code == 401
+    assert response.headers["www-authenticate"] == "Bearer"
+    assert fake_llm.calls == []
+
+
+def test_returns_reply_and_only_changed_fields(auth_client: TestClient, fake_llm: FakeCompletion) -> None:
     fake_llm.returns(
         "Got it.",
         governingLaw="Delaware",
@@ -121,7 +129,7 @@ def test_returns_reply_and_only_changed_fields(client: TestClient, fake_llm: Fak
         party1=party(company="Acme Corp"),
     )
 
-    response = client.post("/api/chat", json=chat_body())
+    response = auth_client.post("/api/chat", json=chat_body())
 
     assert response.status_code == 200
     assert response.json() == {
@@ -139,9 +147,9 @@ def test_returns_reply_and_only_changed_fields(client: TestClient, fake_llm: Fak
 
 
 def test_calls_the_model_through_cerebras_with_structured_outputs(
-    client: TestClient, fake_llm: FakeCompletion
+    auth_client: TestClient, fake_llm: FakeCompletion
 ) -> None:
-    client.post("/api/chat", json=chat_body())
+    auth_client.post("/api/chat", json=chat_body())
 
     [call] = fake_llm.calls
     assert call["model"] == "openrouter/openai/gpt-oss-120b"
@@ -151,9 +159,9 @@ def test_calls_the_model_through_cerebras_with_structured_outputs(
     assert call["api_key"] == "test-key"
 
 
-def test_sends_system_prompt_then_the_conversation(client: TestClient, fake_llm: FakeCompletion) -> None:
+def test_sends_system_prompt_then_the_conversation(auth_client: TestClient, fake_llm: FakeCompletion) -> None:
     values = {"governingLaw": "Delaware", "party1": {"company": "Acme Corp"}}
-    client.post("/api/chat", json=chat_body("Hello", values=values, today="2026-10-16"))
+    auth_client.post("/api/chat", json=chat_body("Hello", values=values, today="2026-10-16"))
 
     messages = fake_llm.calls[0]["messages"]
     assert messages[0]["role"] == "system"
@@ -167,27 +175,27 @@ def test_sends_system_prompt_then_the_conversation(client: TestClient, fake_llm:
     assert "Mutual Non-Disclosure Agreement" in prompt
 
 
-def test_complete_is_computed_from_values_and_updates(client: TestClient, fake_llm: FakeCompletion) -> None:
+def test_complete_is_computed_from_values_and_updates(auth_client: TestClient, fake_llm: FakeCompletion) -> None:
     almost = COMPLETE_VALUES | {"party2": COMPLETE_VALUES["party2"] | {"noticeAddress": ""}}
 
     fake_llm.returns()
-    assert client.post("/api/chat", json=chat_body(values=almost)).json()["complete"] is False
+    assert auth_client.post("/api/chat", json=chat_body(values=almost)).json()["complete"] is False
 
     fake_llm.returns(party2=party(noticeAddress="alan@beta.com"))
-    assert client.post("/api/chat", json=chat_body(values=almost)).json()["complete"] is True
+    assert auth_client.post("/api/chat", json=chat_body(values=almost)).json()["complete"] is True
 
 
-def test_drops_invalid_dates_and_year_counts_from_the_model(client: TestClient, fake_llm: FakeCompletion) -> None:
+def test_drops_invalid_dates_and_year_counts_from_the_model(auth_client: TestClient, fake_llm: FakeCompletion) -> None:
     fake_llm.returns(effectiveDate="next Monday", mndaTermYears="two", confidentialityYears=" 3 ")
 
-    updates = client.post("/api/chat", json=chat_body()).json()["updates"]
+    updates = auth_client.post("/api/chat", json=chat_body()).json()["updates"]
 
     assert updates == {"confidentialityYears": "3"}
 
 
 def test_missing_api_key_returns_503(settings: Settings, fake_llm: FakeCompletion) -> None:
     settings.openrouter_api_key = None
-    with TestClient(create_app(settings)) as client:
+    with signed_in_client(settings) as client:
         response = client.post("/api/chat", json=chat_body())
 
     assert response.status_code == 503
@@ -195,26 +203,26 @@ def test_missing_api_key_returns_503(settings: Settings, fake_llm: FakeCompletio
     assert fake_llm.calls == []
 
 
-def test_llm_failure_returns_502_without_leaking_details(client: TestClient, fake_llm: FakeCompletion) -> None:
+def test_llm_failure_returns_502_without_leaking_details(auth_client: TestClient, fake_llm: FakeCompletion) -> None:
     fake_llm.error = RuntimeError("upstream secret details")
 
-    response = client.post("/api/chat", json=chat_body())
+    response = auth_client.post("/api/chat", json=chat_body())
 
     assert response.status_code == 502
     assert response.json() == {"detail": "The AI assistant couldn’t respond. Please try again."}
 
 
-def test_drops_values_too_long_for_the_document(client: TestClient, fake_llm: FakeCompletion) -> None:
+def test_drops_values_too_long_for_the_document(auth_client: TestClient, fake_llm: FakeCompletion) -> None:
     fake_llm.returns(jurisdiction="x" * 501, modifications="y" * 4001, party2=party(name="z" * 501, title="CTO"))
 
-    updates = client.post("/api/chat", json=chat_body()).json()["updates"]
+    updates = auth_client.post("/api/chat", json=chat_body()).json()["updates"]
 
     assert updates == {"party2": {"title": "CTO"}}
 
 
-def test_trims_the_reply_to_a_valid_message(client: TestClient, fake_llm: FakeCompletion) -> None:
+def test_trims_the_reply_to_a_valid_message(auth_client: TestClient, fake_llm: FakeCompletion) -> None:
     fake_llm.returns("  " + "a" * 5000)
-    assert client.post("/api/chat", json=chat_body()).json()["reply"] == "a" * 4000
+    assert auth_client.post("/api/chat", json=chat_body()).json()["reply"] == "a" * 4000
 
 
 @pytest.mark.parametrize(
@@ -228,9 +236,9 @@ def test_trims_the_reply_to_a_valid_message(client: TestClient, fake_llm: FakeCo
     ],
     ids=["not-json", "no-updates", "incomplete-updates", "empty-reply", "unknown-document"],
 )
-def test_unusable_model_output_returns_502(client: TestClient, fake_llm: FakeCompletion, content: str) -> None:
+def test_unusable_model_output_returns_502(auth_client: TestClient, fake_llm: FakeCompletion, content: str) -> None:
     fake_llm.content = content
-    assert client.post("/api/chat", json=chat_body()).status_code == 502
+    assert auth_client.post("/api/chat", json=chat_body()).status_code == 502
 
 
 @pytest.mark.parametrize(
@@ -249,18 +257,18 @@ def test_unusable_model_output_returns_502(client: TestClient, fake_llm: FakeCom
         {"messages": [{"role": "user", "content": "Hi"}], "values": {"terms": {"product": "x" * 4001}}},
     ],
 )
-def test_rejects_invalid_requests(client: TestClient, fake_llm: FakeCompletion, body: dict[str, Any]) -> None:
-    assert client.post("/api/chat", json=body).status_code == 422
+def test_rejects_invalid_requests(auth_client: TestClient, fake_llm: FakeCompletion, body: dict[str, Any]) -> None:
+    assert auth_client.post("/api/chat", json=body).status_code == 422
     assert fake_llm.calls == []
 
 
 # --- Choosing and switching agreements ---------------------------------------
 
 
-def test_without_a_document_asks_which_agreement(client: TestClient, fake_llm: FakeCompletion) -> None:
+def test_without_a_document_asks_which_agreement(auth_client: TestClient, fake_llm: FakeCompletion) -> None:
     fake_llm.then("What is the business relationship?")
 
-    response = client.post("/api/chat", json=chat_body("I need a contract.", document_id=None))
+    response = auth_client.post("/api/chat", json=chat_body("I need a contract.", document_id=None))
 
     assert response.json() == {
         "reply": "What is the business relationship?",
@@ -276,14 +284,14 @@ def test_without_a_document_asks_which_agreement(client: TestClient, fake_llm: F
     assert "<document>" not in prompt
 
 
-def test_choosing_an_agreement_drafts_it_in_the_same_turn(client: TestClient, fake_llm: FakeCompletion) -> None:
+def test_choosing_an_agreement_drafts_it_in_the_same_turn(auth_client: TestClient, fake_llm: FakeCompletion) -> None:
     fake_llm.then("A pilot agreement fits.", document_id="pilot")
     fake_llm.then(
         "Let's draft a Pilot Agreement. What is the product?",
         updates=pilot_updates({"pilotPeriod": "60 days"}, party1=party(company="Initech")),
     )
 
-    response = client.post(
+    response = auth_client.post(
         "/api/chat",
         json=chat_body("Initech wants a 60-day pilot.", document_id=None, values={"effectiveDate": "2026-10-16"}),
     )
@@ -305,11 +313,11 @@ def test_choosing_an_agreement_drafts_it_in_the_same_turn(client: TestClient, fa
     assert "pilotPeriod (Pilot Period): How long the pilot lasts" in prompt
 
 
-def test_switching_keeps_the_shared_fields(client: TestClient, fake_llm: FakeCompletion) -> None:
+def test_switching_keeps_the_shared_fields(auth_client: TestClient, fake_llm: FakeCompletion) -> None:
     fake_llm.then("Switching to a pilot.", document_id="pilot", updates=no_updates(purpose="ignored"))
     fake_llm.then("Done.", updates=pilot_updates())
 
-    response = client.post("/api/chat", json=chat_body("Make it a pilot instead.", values=COMPLETE_VALUES))
+    response = auth_client.post("/api/chat", json=chat_body("Make it a pilot instead.", values=COMPLETE_VALUES))
 
     body = response.json()
     assert body["documentId"] == "pilot"
@@ -322,30 +330,30 @@ def test_switching_keeps_the_shared_fields(client: TestClient, fake_llm: FakeCom
     assert "purpose" not in shown
 
 
-def test_failure_of_the_re_run_returns_502(client: TestClient, fake_llm: FakeCompletion) -> None:
+def test_failure_of_the_re_run_returns_502(auth_client: TestClient, fake_llm: FakeCompletion) -> None:
     fake_llm.then("A pilot agreement fits.", document_id="pilot")
     fake_llm.content = "not json"  # the second call, for the Pilot Agreement
 
-    response = client.post("/api/chat", json=chat_body(document_id=None))
+    response = auth_client.post("/api/chat", json=chat_body(document_id=None))
 
     assert response.status_code == 502
     assert len(fake_llm.calls) == 2
 
 
-def test_switch_from_the_re_run_is_ignored(client: TestClient, fake_llm: FakeCompletion) -> None:
+def test_switch_from_the_re_run_is_ignored(auth_client: TestClient, fake_llm: FakeCompletion) -> None:
     fake_llm.then("Pilot it is.", document_id="pilot")
     fake_llm.then("Actually a CSA?", document_id="csa", updates=pilot_updates())
 
-    body = client.post("/api/chat", json=chat_body(document_id=None)).json()
+    body = auth_client.post("/api/chat", json=chat_body(document_id=None)).json()
 
     assert body["documentId"] == "pilot"
     assert len(fake_llm.calls) == 2
 
 
-def test_same_document_id_is_not_a_switch(client: TestClient, fake_llm: FakeCompletion) -> None:
+def test_same_document_id_is_not_a_switch(auth_client: TestClient, fake_llm: FakeCompletion) -> None:
     fake_llm.then("Noted.", document_id="mutual-nda", updates=no_updates(governingLaw="Delaware"))
 
-    body = client.post("/api/chat", json=chat_body()).json()
+    body = auth_client.post("/api/chat", json=chat_body()).json()
 
     assert body["documentId"] == "mutual-nda"
     assert body["updates"] == {"governingLaw": "Delaware"}
@@ -362,15 +370,17 @@ PILOT_VALUES = {
 }
 
 
-def test_agreement_turn_completes_once_required_terms_are_filled(client: TestClient, fake_llm: FakeCompletion) -> None:
+def test_agreement_turn_completes_once_required_terms_are_filled(
+    auth_client: TestClient, fake_llm: FakeCompletion
+) -> None:
     fake_llm.then("Which cap?", updates=pilot_updates())
-    body = client.post("/api/chat", json=chat_body(document_id="pilot", values=PILOT_VALUES)).json()
+    body = auth_client.post("/api/chat", json=chat_body(document_id="pilot", values=PILOT_VALUES)).json()
     assert body["complete"] is False
     assert "Required fields still missing: General Cap Amount." in fake_llm.system_prompt
     assert "unrelated" not in fake_llm.system_prompt
 
     fake_llm.then("All done.", updates=pilot_updates({"generalCapAmount": "$10,000"}))
-    body = client.post("/api/chat", json=chat_body(document_id="pilot", values=PILOT_VALUES)).json()
+    body = auth_client.post("/api/chat", json=chat_body(document_id="pilot", values=PILOT_VALUES)).json()
     assert body == {
         "reply": "All done.",
         "documentId": "pilot",
@@ -379,7 +389,7 @@ def test_agreement_turn_completes_once_required_terms_are_filled(client: TestCli
     }
 
 
-def test_agreement_turn_drops_invalid_values(client: TestClient, fake_llm: FakeCompletion) -> None:
+def test_agreement_turn_drops_invalid_values(auth_client: TestClient, fake_llm: FakeCompletion) -> None:
     fake_llm.then(
         "Ok.",
         updates=pilot_updates(
@@ -387,12 +397,12 @@ def test_agreement_turn_drops_invalid_values(client: TestClient, fake_llm: FakeC
         ),
     )
 
-    body = client.post("/api/chat", json=chat_body(document_id="pilot")).json()
+    body = auth_client.post("/api/chat", json=chat_body(document_id="pilot")).json()
 
     assert body["updates"] == {"terms": {"pilotPeriod": "90 days"}}
 
 
-def test_addenda_have_no_governing_law(client: TestClient, fake_llm: FakeCompletion) -> None:
+def test_addenda_have_no_governing_law(auth_client: TestClient, fake_llm: FakeCompletion) -> None:
     terms = dict.fromkeys(
         ["agreement", "targetUptime", "scheduledDowntime", "uptimeCredit", "targetResponseTime", "supportChannel",
          "responseTimeCredit"]
@@ -400,7 +410,7 @@ def test_addenda_have_no_governing_law(client: TestClient, fake_llm: FakeComplet
     updates = {"effectiveDate": None, "terms": terms | {"targetUptime": "99.9%"}, "party1": party(), "party2": party()}
     fake_llm.then("Ok.", updates=updates)
 
-    body = client.post("/api/chat", json=chat_body(document_id="sla")).json()
+    body = auth_client.post("/api/chat", json=chat_body(document_id="sla")).json()
 
     assert body["updates"] == {"terms": {"targetUptime": "99.9%"}}
     assert "governingLaw" not in turn_model("sla").model_fields["updates"].annotation.model_fields

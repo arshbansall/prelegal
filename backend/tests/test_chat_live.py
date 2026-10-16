@@ -1,11 +1,10 @@
 """Calls the real model (OpenRouter → Cerebras). Run with `uv run pytest -m live`."""
 
 import pytest
-from fastapi.testclient import TestClient
 
 from app.config import Settings
 from app.documents import DOCUMENTS
-from app.main import create_app
+from tests.accounts import signed_in_client
 
 API_KEY = Settings().openrouter_api_key
 
@@ -27,7 +26,7 @@ def test_fills_fields_from_a_conversation(settings: Settings) -> None:
     ]
     values = {"effectiveDate": "2026-10-16"}
 
-    with TestClient(create_app(settings)) as client:
+    with signed_in_client(settings) as client:
         response = client.post(
             "/api/chat",
             json={"messages": messages, "documentId": "mutual-nda", "values": values, "today": "2026-10-16"},
@@ -64,7 +63,7 @@ def test_reports_complete_once_the_last_details_are_given(settings: Settings) ->
         },
     ]
 
-    with TestClient(create_app(settings)) as client:
+    with signed_in_client(settings) as client:
         response = client.post(
             "/api/chat",
             json={"messages": messages, "documentId": "mutual-nda", "values": values, "today": "2026-10-16"},
@@ -88,7 +87,7 @@ def post(settings: Settings, text: str, document_id: str | None = None, values: 
         "values": values or {"effectiveDate": "2026-10-16"},
         "today": "2026-10-16",
     }
-    with TestClient(create_app(settings)) as client:
+    with signed_in_client(settings) as client:
         response = client.post("/api/chat", json=body)
     assert response.status_code == 200, response.text
     return response.json()

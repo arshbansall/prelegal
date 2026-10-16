@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 from app.config import Settings
 from app.main import create_app
+from tests.accounts import sign_up
 
 
 def user_rows(settings: Settings) -> list[tuple[int, str]]:
@@ -17,37 +18,9 @@ def test_health(client: TestClient) -> None:
     assert response.json() == {"status": "ok"}
 
 
-def test_login_creates_user(client: TestClient, settings: Settings) -> None:
-    response = client.post("/api/auth/login", json={"email": "ada@acme.com", "password": "secret"})
-
-    assert response.status_code == 200
-    body = response.json()
-    assert body == {"id": body["id"], "email": "ada@acme.com"}
-    assert user_rows(settings) == [(body["id"], "ada@acme.com")]
-
-
-def test_login_accepts_any_password(client: TestClient) -> None:
-    for password in ["", "x", "something else entirely"]:
-        response = client.post("/api/auth/login", json={"email": "ada@acme.com", "password": password})
-        assert response.status_code == 200
-
-
-def test_login_reuses_existing_user_and_normalizes_email(client: TestClient, settings: Settings) -> None:
-    first = client.post("/api/auth/login", json={"email": "ada@acme.com", "password": "a"}).json()
-    second = client.post("/api/auth/login", json={"email": "  ADA@Acme.com ", "password": "b"}).json()
-
-    assert second == first
-    assert len(user_rows(settings)) == 1
-
-
-def test_login_requires_email(client: TestClient) -> None:
-    for body in [{"email": "   ", "password": "x"}, {"password": "x"}]:
-        assert client.post("/api/auth/login", json=body).status_code == 422
-
-
 def test_database_is_recreated_on_startup(settings: Settings) -> None:
     with TestClient(create_app(settings)) as client:
-        client.post("/api/auth/login", json={"email": "ada@acme.com", "password": "x"})
+        sign_up(client)
     assert len(user_rows(settings)) == 1
 
     with TestClient(create_app(settings)):

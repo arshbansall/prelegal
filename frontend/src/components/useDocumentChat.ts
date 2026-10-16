@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ApiError, sendChat } from "@/lib/api";
+import { errorMessage, sendChat } from "@/lib/api";
 import { GREETING, type ChatMessage, type ChatResult } from "@/lib/chat";
 import type { DocumentValues } from "@/lib/documents";
 
@@ -9,19 +9,24 @@ import type { DocumentValues } from "@/lib/documents";
  * State for the AI chat that drafts the agreement. The caller owns the
  * document: each turn sends the agreement and its current `values`, and
  * `onResult` receives the agreement after the turn and the fields the AI changed.
+ * `initialMessages` resumes a saved conversation.
  */
 export function useDocumentChat({
   documentId,
   values,
   today,
   onResult,
+  initialMessages,
 }: {
   documentId: string | null;
   values: DocumentValues;
   today: string;
   onResult: (result: ChatResult) => void;
+  initialMessages?: ChatMessage[];
 }) {
-  const [messages, setMessages] = useState<ChatMessage[]>([GREETING]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() =>
+    initialMessages?.length ? initialMessages : [GREETING],
+  );
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [complete, setComplete] = useState(false);
@@ -41,7 +46,7 @@ export function useDocumentChat({
       onResult(result);
     } catch (e) {
       if (id !== latestRequest.current) return;
-      setError(e instanceof ApiError ? e.message : "Something went wrong. Please try again.");
+      setError(errorMessage(e));
     } finally {
       if (id === latestRequest.current) setPending(false);
     }
