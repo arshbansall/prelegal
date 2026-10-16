@@ -1,6 +1,7 @@
 import { marked, type Tokens } from "marked";
 import { describe, expect, it } from "vitest";
 import {
+  applyNdaUpdates,
   defaultNdaValues,
   escapeMarkdown,
   fillCoverPage,
@@ -159,5 +160,30 @@ describe("pdfFilename", () => {
 
   it("falls back to a generic name", () => {
     expect(pdfFilename(defaultNdaValues)).toBe("Mutual-NDA.pdf");
+  });
+});
+
+describe("applyNdaUpdates", () => {
+  it("changes only the given fields", () => {
+    const result = applyNdaUpdates(completeValues, { governingLaw: "California", confidentialityType: "perpetual" });
+    expect(result).toEqual({ ...completeValues, governingLaw: "California", confidentialityType: "perpetual" });
+  });
+
+  it("merges party details without touching the other fields or party", () => {
+    const result = applyNdaUpdates(completeValues, { party1: { title: "President" } });
+    expect(result.party1).toEqual({ ...completeValues.party1, title: "President" });
+    expect(result.party2).toEqual(completeValues.party2);
+  });
+
+  it("clears fields set to an empty string", () => {
+    expect(applyNdaUpdates(completeValues, { modifications: "" }).modifications).toBe("");
+  });
+
+  it("returns an equal copy for no updates and never mutates its input", () => {
+    const before = structuredClone(completeValues);
+    const result = applyNdaUpdates(completeValues, {});
+    applyNdaUpdates(completeValues, { purpose: "x", party2: { name: "y" } });
+    expect(result).toEqual(before);
+    expect(completeValues).toEqual(before);
   });
 });

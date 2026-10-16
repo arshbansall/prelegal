@@ -3,6 +3,8 @@
  * production FastAPI serves this app and the API from the same origin, and in
  * development `next dev` proxies `/api` to the backend (see next.config.ts).
  */
+import { recentMessages, type ChatMessage, type ChatResult } from "@/lib/chat";
+import type { NdaValues } from "@/lib/nda";
 import type { User } from "@/lib/session";
 
 export class ApiError extends Error {
@@ -39,6 +41,18 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
     throw new ApiError(response.status, errorMessage(body) ?? `Request failed (${response.status}).`);
   }
   return body as T;
+}
+
+/**
+ * One turn of the AI chat. The backend is stateless, so this sends the
+ * conversation so far and the document as the user sees it.
+ * `today` is the user's local date (yyyy-mm-dd), for resolving relative dates.
+ */
+export function sendChat(messages: ChatMessage[], values: NdaValues, today: string): Promise<ChatResult> {
+  return apiFetch<ChatResult>("/api/chat", {
+    method: "POST",
+    body: JSON.stringify({ messages: recentMessages(messages), values, today: today || null }),
+  });
 }
 
 /** Placeholder sign-in (PL-8): the backend accepts any password and records the email. */

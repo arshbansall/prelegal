@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import Settings
 from app.db import init_db
-from app.routers import auth, health
+from app.routers import auth, chat, health
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -18,8 +18,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         yield
 
     app = FastAPI(title="Prelegal", lifespan=lifespan)
+    app.state.settings = settings
     app.include_router(health.router)
     app.include_router(auth.router)
+    app.include_router(chat.router)
 
     @app.api_route("/api/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"], include_in_schema=False)
     def api_not_found(path: str) -> None:

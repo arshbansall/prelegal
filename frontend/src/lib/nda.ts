@@ -29,6 +29,26 @@ export type NdaValues = {
   party2: Party;
 };
 
+/** Longest single-line and multi-line field values the backend accepts (backend/app/schemas.py). */
+export const SHORT_TEXT_MAX = 500;
+export const LONG_TEXT_MAX = 4000;
+
+/** A partial change to an NDA, e.g. the fields the AI chat filled in. */
+export type NdaUpdates = Partial<Omit<NdaValues, "party1" | "party2">> & {
+  party1?: Partial<Party>;
+  party2?: Partial<Party>;
+};
+
+export function applyNdaUpdates(values: NdaValues, updates: NdaUpdates): NdaValues {
+  const { party1, party2, ...fields } = updates;
+  return {
+    ...values,
+    ...fields,
+    party1: { ...values.party1, ...party1 },
+    party2: { ...values.party2, ...party2 },
+  };
+}
+
 /** Placeholder text exactly as it appears in the cover page template. */
 const PLACEHOLDER = {
   purpose: "[Evaluating whether to enter into a business relationship with the other party.]",

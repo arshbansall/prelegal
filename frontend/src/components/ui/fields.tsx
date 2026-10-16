@@ -28,6 +28,7 @@ export function TextField({
   type = "text",
   autoComplete = "off",
   required,
+  maxLength,
 }: {
   id: string;
   label: string;
@@ -41,12 +42,14 @@ export function TextField({
   type?: "text" | "email" | "password" | "date";
   autoComplete?: string;
   required?: boolean;
+  maxLength?: number;
 }) {
   const describedBy = [hint && `${id}-hint`, error && `${id}-error`].filter(Boolean).join(" ");
   const props = {
     id,
     value,
     required,
+    maxLength,
     onChange: (e: { target: { value: string } }) => onChange(e.target.value),
     "aria-invalid": error ? true : undefined,
     "aria-describedby": describedBy || undefined,
