@@ -62,12 +62,12 @@ These are Tailwind theme tokens in `frontend/src/app/globals.css`: `accent`, `pr
 
 Done:
 - **PL-6:** `templates/` holds the Common Paper agreement templates (CC BY 4.0) with `templates/LICENSE.txt`; `catalog.json` indexes them.
-- **PL-7:** Mutual NDA creator at `/`. Form → live preview → PDF generated in the browser (`@react-pdf/renderer`). It reads the two Mutual NDA templates from `../templates` at build time. Logic is in `frontend/src/lib/nda.ts`. (Generalized to every agreement in PL-10.)
+- **PL-7:** Mutual NDA creator (now at `/draft/`). Form → live preview → PDF generated in the browser (`@react-pdf/renderer`). It reads the two Mutual NDA templates from `../templates` at build time. Logic is in `frontend/src/lib/nda.ts`. (Generalized to every agreement in PL-10.)
 - **PL-8:** V1 foundation.
-  - `backend/`: FastAPI + SQLAlchemy over SQLite (Python 3.13, uv). The database is recreated on every startup and has a `users` table. Endpoints: `GET /api/health` and `POST /api/auth/login`. All other paths serve `frontend/out`.
+  - `backend/`: FastAPI + SQLAlchemy over SQLite (Python 3.13, uv). The database is recreated on every startup (tables: `users`, plus `sessions` and `documents` since PL-11). `GET /api/health`; unknown `/api/...` paths get a JSON 404, and all other paths serve `frontend/out`.
   - PL-8's placeholder sign-in was replaced by real accounts in PL-11. Pages in `frontend/src/app/(app)/` require sign-in (checked in the browser) and share the app shell.
   - `Dockerfile` (one container on :8000, non-root, `.env` passed at runtime) and the `scripts/` start/stop scripts. Stopping removes the container, so each start has a fresh database.
-- **PL-9:** AI chat fills in the Mutual NDA. The left panel of `/` has a Chat tab (default) and a Fields tab (the PL-7 form, still editable); the preview and PDF are unchanged.
+- **PL-9:** AI chat fills in the Mutual NDA. The left panel of the drafting page has a Chat tab (default) and a Fields tab (the PL-7 form, still editable); the preview and PDF are unchanged.
   - `POST /api/chat` is stateless: the browser sends the conversation, the current NDA values and its local date, and gets back `{reply, updates, complete}`. `updates` holds only the changed fields; the server computes `complete` from the required fields. The chat lives in memory only.
   - `backend/app/llm.py` is the only module that calls the LLM (`structured_completion`, raising `LLMUnavailable` → 503 or `LLMError` → 502). Since PL-10 the prompt and turn logic are in `backend/app/drafting.py`, and `nda_chat.py` keeps only the NDA's fields and required-field rules; the request/response and Structured Outputs base models are in `schemas.py`. `OPENROUTER_API_KEY` is read by `Settings` from the environment or the repo's `.env`.
   - Frontend: `components/ui/Tabs.tsx`, `lib/chat.ts`; `applyNdaUpdates` in `lib/nda.ts`. The chat components were generalized in PL-10.
@@ -78,8 +78,7 @@ Done:
   - `POST /api/chat` takes `{messages, documentId (null until chosen), values, today}` and returns `{reply, documentId, updates, complete}`. `app/drafting.py` builds the prompt and runs the turn: with no document, a `SelectionTurn` asks what the user needs or picks one; every turn model has `documentId` first, and when it names a different agreement the turn is re-run for that agreement (at most 2 LLM calls). Unsupported requests get the closest supported agreement offered. Per-agreement Structured Outputs models are generated in `agreement_chat.py`.
   - Frontend: `DocumentCreator` (page state and layout), `DocumentChat` + `useDocumentChat`, `DocumentPicker` (menu, plus cards before anything is chosen), `DocumentPreview`, `AgreementPdf` (numbers nested clauses 1.1, 1.2).
   - Layout: the app shell is exactly the viewport's height; the chat (input pinned at the bottom), the Fields tab and the preview each scroll on their own. Below `lg` an Edit | Preview switch shows one panel at a time.
-
-- **PL-11:** Accounts, saved documents, a landing page and a disclaimer.
+- **PL-11** (merged to `main`, PR #9): Accounts, saved documents, a landing page and a disclaimer.
   - Auth (`backend/app/auth.py`): passwords hashed with stdlib scrypt; sign-up and sign-in issue an opaque bearer token, and only its SHA-256 is stored in the `sessions` table. `POST /api/auth/signup` (409 for a taken email), `POST /api/auth/login` (one 401 for an unknown email or a wrong password), `GET /api/auth/me`, `POST /api/auth/logout`. Routes that need a user take `CurrentUser`; `/api/chat` and `/api/documents` do. Sessions end when the server restarts (the database is recreated).
   - Saved documents (`routers/saved_documents.py`, `SavedDocument` model, at `/api/documents`; not the catalog in `app/documents.py`): list, create, get, replace, delete. Each stores the agreement id, `DocumentValues`, the chat messages and `dateEdited`; the title comes from the parties' companies. Another user's document is a 404.
   - Frontend session: `lib/session.ts` keeps `{token, user}` in localStorage (`prelegal.session`). `apiFetch` sends `Authorization: Bearer` and clears the session on a 401 (except from login/signup), which sends the user to `/login/`. `RequireAuth` checks the token with `/api/auth/me` once per page load.
@@ -87,6 +86,8 @@ Done:
   - Saving is explicit: Save in the drafting toolbar (Download PDF also saves). `useSaveDocument` serializes saves and tracks unsaved changes with `saveKey` (`lib/savedDocuments.ts`). Leaving a draft with unsaved changes asks first: in-app links and Sign out through `lib/unsavedChanges.ts`, reloads and closing the tab through `beforeunload`.
   - Disclaimer: one text in `lib/disclaimer.ts`, shown above the preview, on every PDF page, and on the landing, auth and documents pages.
   - UI building blocks: `components/ui/layout.tsx` (Card, Callout, PageHeader, EmptyState, Spinner, PageSpinner, Skeleton), `components/ui/icons.tsx`, and `buttonClass` plus secondary/danger variants in `fields.tsx`.
+
+All tickets so far (PL-6 to PL-11) are merged to `main`; nothing is in progress. Known limits, by design: the database (accounts, sessions, saved documents) is reset whenever the server restarts, and sessions don't expire otherwise.
 
 Commands:
 - Run: `scripts/start-mac.sh` / `scripts/stop-mac.sh` (or the Linux/Windows versions) → http://localhost:8000
