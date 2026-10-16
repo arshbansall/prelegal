@@ -22,50 +22,72 @@ body {
 
 /* Typography for the rendered agreement (HTML produced by `marked`). */
 @layer components {
-  .nda-document {
+  .agreement-document {
     @apply font-serif text-[15px] leading-relaxed text-slate-800;
   }
-  .nda-document h1 {
+  .agreement-document h1 {
     @apply mb-6 text-center text-2xl font-bold text-navy;
   }
-  .nda-document h2 {
+  .agreement-document h2 {
     @apply mt-6 mb-3 text-sm font-bold tracking-wide text-navy;
   }
-  .nda-document h3 {
+  .agreement-document h3 {
     @apply mt-6 mb-1 font-bold text-navy;
   }
-  .nda-document p {
+  .agreement-document p {
     @apply mb-3;
   }
-  .nda-document label {
+  .agreement-document label {
     @apply block font-sans text-xs text-slate-500;
   }
-  .nda-document a {
+  .agreement-document a {
     @apply text-navy underline decoration-primary underline-offset-2;
   }
-  .nda-document ol {
-    @apply list-decimal space-y-3 pl-6;
+  /* Clauses are numbered 1., 2. and, when nested, 1.1, 1.2, as in the PDF. */
+  .agreement-document ol {
+    counter-reset: clause;
+    @apply space-y-3;
   }
-  .nda-document .coverpage_link {
+  .agreement-document ol ol {
+    @apply mt-3;
+  }
+  .agreement-document ol > li {
+    counter-increment: clause;
+    @apply relative pl-8;
+  }
+  .agreement-document ol ol > li {
+    @apply pl-12;
+  }
+  .agreement-document ol > li::before {
+    content: counter(clause) ".";
+    @apply absolute left-0;
+  }
+  .agreement-document ol ol > li::before {
+    content: counters(clause, ".");
+  }
+  /* Clause headings, and the variables the cover page defines (e.g. "Pilot Period"). */
+  .agreement-document .header_2,
+  .agreement-document .header_3,
+  .agreement-document [class$="_link"] {
     @apply font-semibold;
   }
-  .nda-document table {
+  .agreement-document table {
     @apply my-5 w-full border-collapse text-sm;
   }
-  .nda-document th,
-  .nda-document td {
+  .agreement-document th,
+  .agreement-document td {
     @apply border border-slate-300 px-3 py-2 align-top;
   }
-  .nda-document th {
+  .agreement-document th {
     @apply bg-slate-100 font-semibold;
   }
-  .nda-document td {
+  .agreement-document td {
     @apply h-10;
   }
-  .nda-document td label {
+  .agreement-document td label {
     @apply mt-0.5;
   }
-  .nda-document hr {
+  .agreement-document hr {
     @apply my-10 border-slate-200;
   }
 }

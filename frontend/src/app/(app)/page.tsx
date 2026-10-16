@@ -1,14 +1,9 @@
 import type { Metadata } from "next";
-import { NdaCreator } from "@/components/NdaCreator";
-import { readTemplate } from "@/lib/templates";
+import { DocumentCreator } from "@/components/DocumentCreator";
+import { readDocuments } from "@/lib/templates";
 
-export const metadata: Metadata = { title: "Mutual NDA Creator" };
+export const metadata: Metadata = { title: "Draft an agreement" };
 
 export default function Home() {
-  return (
-    <NdaCreator
-      coverPageTemplate={readTemplate("Mutual-NDA-coverpage.md")}
-      standardTerms={readTemplate("Mutual-NDA.md")}
-    />
-  );
+  return <DocumentCreator documents={readDocuments()} />;
 }

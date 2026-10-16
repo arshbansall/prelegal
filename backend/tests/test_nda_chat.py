@@ -3,8 +3,9 @@ from typing import Any
 
 from litellm.llms.base_llm.base_utils import type_to_response_format_param
 
-from app.nda_chat import NdaChatTurn, apply_updates, build_messages, missing_fields
-from app.schemas import NdaUpdates, NdaValues, Party, PartyUpdates
+from app.drafting import apply_updates, build_messages
+from app.nda_chat import NdaChatTurn, missing_fields
+from app.schemas import DocumentValues, NdaUpdates, Party, PartyUpdates
 
 UNCHANGED_PARTY = {"name": None, "title": None, "company": None, "notice_address": None}
 UNCHANGED = {field: None for field in NdaUpdates.model_fields} | {
@@ -17,9 +18,9 @@ def updates(**changes: Any) -> NdaUpdates:
     return NdaUpdates.model_validate(UNCHANGED | changes)
 
 
-def complete_values() -> NdaValues:
+def complete_values() -> DocumentValues:
     signer = {"name": "Ada", "company": "Acme", "notice_address": "ada@acme.com"}
-    return NdaValues(
+    return DocumentValues(
         purpose="Exploring a deal.",
         effective_date="2026-10-16",
         governing_law="Delaware",
@@ -30,7 +31,7 @@ def complete_values() -> NdaValues:
 
 
 def test_apply_updates_merges_fields_and_parties() -> None:
-    values = NdaValues(governing_law="Delaware", party1=Party(name="Ada", company="Acme"))
+    values = DocumentValues(governing_law="Delaware", party1=Party(name="Ada", company="Acme"))
 
     result = apply_updates(
         values,
@@ -45,7 +46,7 @@ def test_apply_updates_merges_fields_and_parties() -> None:
 
 
 def test_apply_updates_clears_fields_set_to_empty_string() -> None:
-    result = apply_updates(NdaValues(governing_law="Delaware"), updates(governing_law=""))
+    result = apply_updates(DocumentValues(governing_law="Delaware"), updates(governing_law=""))
     assert result.governing_law == ""
 
 
@@ -70,10 +71,11 @@ def test_missing_fields_checks_year_counts_only_when_used() -> None:
 
 
 def test_build_messages_lists_missing_fields_or_none() -> None:
-    [system] = build_messages([], complete_values(), date(2026, 10, 16))
+    [system] = build_messages([], "mutual-nda", complete_values(), date(2026, 10, 16))
     assert "Required fields still missing: none." in system["content"]
 
-    [system, user] = build_messages([{"role": "user", "content": "Hi"}], NdaValues(), date(2026, 10, 16))
+    history = [{"role": "user", "content": "Hi"}]
+    [system, user] = build_messages(history, "mutual-nda", DocumentValues(), date(2026, 10, 16))
     assert "Required fields still missing: purpose, effective date," in system["content"]
     assert user == {"role": "user", "content": "Hi"}
 
@@ -89,6 +91,7 @@ def test_response_schema_is_strict() -> None:
         assert obj["additionalProperties"] is False
         assert sorted(obj["required"]) == sorted(obj["properties"])
 
+    assert list(schema["schema"]["properties"]) == ["documentId", "updates", "reply"]
     update_fields = schema["schema"]["$defs"]["NdaUpdates"]["properties"]
     assert "governingLaw" in update_fields  # camelCase, as in the prompt and the frontend
     assert "noticeAddress" in schema["schema"]["$defs"]["PartyUpdates"]["properties"]

@@ -1,0 +1,219 @@
+[
+  {
+    "id": "mutual-nda",
+    "name": "Mutual Non-Disclosure Agreement",
+    "shortName": "Mutual NDA",
+    "description": "Lets two parties share confidential information with each other, for example while evaluating a business relationship, and sets how it must be protected.",
+    "coverPage": "Mutual-NDA-coverpage.md",
+    "standardTerms": "Mutual-NDA.md",
+    "parties": ["Party 1", "Party 2"],
+    "governingLaw": true,
+    "terms": []
+  },
+  {
+    "id": "csa",
+    "name": "Cloud Service Agreement",
+    "shortName": "CSA",
+    "description": "For selling or buying a cloud service or SaaS product: access and use, payment, privacy and security, warranties, liability and term.",
+    "standardTerms": "CSA.md",
+    "parties": ["Provider", "Customer"],
+    "governingLaw": true,
+    "terms": [
+      { "key": "cloudService", "label": "Cloud Service", "hint": "The cloud service or SaaS product the Customer is subscribing to.", "required": true },
+      { "key": "orderDate", "label": "Order Date", "hint": "When the first order starts, e.g. the Effective Date.", "required": true },
+      { "key": "subscriptionPeriod", "label": "Subscription Period", "hint": "How long each subscription term lasts, e.g. 1 year from the Order Date.", "required": true },
+      { "key": "fees", "label": "Fees", "hint": "Subscription fees and how they are billed, e.g. $2,000 per month, billed annually in advance.", "required": true },
+      { "key": "nonRenewalNoticeDate", "label": "Non-Renewal Notice Date", "hint": "Deadline for giving notice of non-renewal, e.g. 30 days before the end of the current Subscription Period.", "required": true },
+      { "key": "technicalSupport", "label": "Technical Support", "hint": "The support the Provider gives, e.g. email support during business hours." },
+      { "key": "generalCapAmount", "label": "General Cap Amount", "hint": "Each party's maximum total liability, e.g. the fees paid or payable in the 12 months before the claim.", "required": true },
+      { "key": "providerCoveredClaims", "label": "Provider Covered Claims", "hint": "Third-party claims the Provider defends the Customer against, e.g. claims that the Cloud Service infringes someone's intellectual property.", "long": true },
+      { "key": "customerCoveredClaims", "label": "Customer Covered Claims", "hint": "Third-party claims the Customer defends the Provider against, e.g. claims that Customer Content infringes someone's intellectual property.", "long": true },
+      { "key": "dpa", "label": "DPA", "hint": "The parties' data processing agreement, if any.", "default": "None" }
+    ]
+  },
+  {
+    "id": "sla",
+    "name": "Service Level Agreement",
+    "shortName": "SLA",
+    "description": "Used alongside a Cloud Service Agreement to set target uptime and support response times, and the service credits when they are missed.",
+    "standardTerms": "sla.md",
+    "parties": ["Provider", "Customer"],
+    "governingLaw": false,
+    "terms": [
+      { "key": "agreement", "label": "Agreement", "hint": "The cloud service agreement this SLA supplements, e.g. the Cloud Service Agreement between the parties dated January 5, 2027.", "required": true },
+      { "key": "targetUptime", "label": "Target Uptime", "hint": "Availability the Provider aims for each calendar month, e.g. 99.9%.", "required": true },
+      { "key": "scheduledDowntime", "label": "Scheduled Downtime", "hint": "Planned maintenance that doesn't count against uptime, e.g. up to 4 hours a month with 48 hours' notice." },
+      { "key": "uptimeCredit", "label": "Uptime Credit", "hint": "Credit when uptime falls below target, e.g. 10% of that month's fees.", "required": true },
+      { "key": "targetResponseTime", "label": "Target Response Time", "hint": "How quickly the Provider responds to support requests, e.g. 4 business hours.", "required": true },
+      { "key": "supportChannel", "label": "Support Channel", "hint": "Where support requests are sent, e.g. support@example.com.", "required": true },
+      { "key": "responseTimeCredit", "label": "Response Time Credit", "hint": "Credit when a response is late, e.g. 5% of that month's fees.", "required": true }
+    ]
+  },
+  {
+    "id": "dpa",
+    "name": "Data Processing Agreement",
+    "shortName": "DPA",
+    "description": "Sets out how a provider processes a customer's personal data, including security, subprocessors, data subject requests, security incidents and international transfers (GDPR, UK and Swiss requirements).",
+    "standardTerms": "DPA.md",
+    "parties": ["Provider", "Customer"],
+    "governingLaw": false,
+    "terms": [
+      { "key": "agreement", "label": "Agreement", "hint": "The main agreement under which the Provider processes the Customer's personal data, e.g. the Cloud Service Agreement between the parties dated January 5, 2027.", "required": true },
+      { "key": "natureAndPurpose", "label": "Nature and Purpose of Processing", "hint": "What the Provider does with the personal data and why, e.g. hosting and processing data to provide the Cloud Service.", "required": true, "long": true },
+      { "key": "categoriesOfDataSubjects", "label": "Categories of Data Subjects", "hint": "Whose data is processed, e.g. the Customer's employees and end users.", "required": true },
+      { "key": "categoriesOfPersonalData", "label": "Categories of Personal Data", "hint": "What kinds of personal data, e.g. names, email addresses and usage data.", "required": true },
+      { "key": "specialCategoryData", "label": "Special Category Data", "hint": "Any sensitive data such as health or biometric data.", "default": "None" },
+      { "key": "specialCategorySafeguards", "label": "Special Category Data Restrictions or Safeguards", "hint": "Extra safeguards for any special category data.", "default": "None" },
+      { "key": "frequencyOfTransfer", "label": "Frequency of Transfer", "hint": "How often personal data is transferred, e.g. continuously.", "default": "Continuous" },
+      { "key": "durationOfProcessing", "label": "Duration of Processing", "hint": "How long processing lasts, e.g. for the term of the Agreement.", "default": "For the term of the Agreement" },
+      { "key": "approvedSubprocessors", "label": "Approved Subprocessors", "hint": "The subprocessors the Customer approves, or a link to the Provider's list.", "required": true, "long": true },
+      { "key": "governingMemberState", "label": "Governing Member State", "hint": "The EU member state whose law governs the EU Standard Contractual Clauses, e.g. Ireland.", "required": true },
+      { "key": "securityPolicy", "label": "Security Policy", "hint": "The security standard the Provider is audited against, e.g. SOC 2 Type II." },
+      { "key": "providerSecurityContact", "label": "Provider Security Contact", "hint": "Where security requests go, e.g. security@example.com.", "required": true }
+    ]
+  },
+  {
+    "id": "design-partner",
+    "name": "Design Partner Agreement",
+    "shortName": "Design Partner Agreement",
+    "description": "Gives an early user access to a product in exchange for feedback and taking part in a design partner program.",
+    "standardTerms": "design-partner-agreement.md",
+    "parties": ["Provider", "Partner"],
+    "governingLaw": true,
+    "terms": [
+      { "key": "product", "label": "Product", "hint": "The product the Partner gets early access to.", "required": true },
+      { "key": "program", "label": "Program", "hint": "What the design partner program involves, e.g. monthly feedback calls and testing new features.", "required": true, "long": true },
+      { "key": "term", "label": "Term", "hint": "How long the agreement lasts, e.g. 6 months from the Effective Date.", "required": true },
+      { "key": "fees", "label": "Fees", "hint": "What the Partner pays, if anything.", "default": "None" }
+    ]
+  },
+  {
+    "id": "psa",
+    "name": "Professional Services Agreement",
+    "shortName": "PSA",
+    "description": "For hiring a provider to perform services and produce deliverables under statements of work (SOWs), covering payment, IP ownership, warranties, liability and termination.",
+    "standardTerms": "psa.md",
+    "parties": ["Provider", "Customer"],
+    "governingLaw": true,
+    "terms": [
+      { "key": "deliverables", "label": "Deliverables", "hint": "The services and deliverables in the first SOW.", "required": true, "long": true },
+      { "key": "sowTerm", "label": "SOW Term", "hint": "When the first SOW starts and ends, e.g. February 1 to July 31, 2027.", "required": true },
+      { "key": "fees", "label": "Fees", "hint": "What the Customer pays for the SOW, e.g. $15,000 per month.", "required": true },
+      { "key": "paymentPeriod", "label": "Payment Period", "hint": "Time to pay each invoice, e.g. 30 days from receipt.", "required": true },
+      { "key": "rejectionPeriod", "label": "Rejection Period", "hint": "Time the Customer has to reject a Deliverable, e.g. 10 business days." },
+      { "key": "resubmissionPeriod", "label": "Resubmission Period", "hint": "Time the Provider has to fix and resubmit a rejected Deliverable, e.g. 10 business days." },
+      { "key": "timeOfAssignment", "label": "Time of Assignment", "hint": "When ownership of Deliverables passes to the Customer, e.g. on payment of the related Fees." },
+      { "key": "customerObligations", "label": "Customer Obligations", "hint": "What the Customer must provide, e.g. timely access to staff and systems.", "default": "None" },
+      { "key": "customerPolicies", "label": "Customer Policies", "hint": "Customer policies the Provider must follow, if any.", "default": "None" },
+      { "key": "generalCapAmount", "label": "General Cap Amount", "hint": "Each party's maximum total liability, e.g. the fees paid or payable in the 12 months before the claim.", "required": true },
+      { "key": "increasedCapAmount", "label": "Increased Cap Amount", "hint": "A higher cap for Increased Claims, if any.", "default": "None" },
+      { "key": "increasedClaims", "label": "Increased Claims", "hint": "Claims subject to the Increased Cap Amount, if any.", "default": "None" },
+      { "key": "unlimitedClaims", "label": "Unlimited Claims", "hint": "Claims with no liability cap, if any.", "default": "None" },
+      { "key": "providerCoveredClaims", "label": "Provider Covered Claims", "hint": "Third-party claims the Provider defends the Customer against, e.g. claims that the Deliverables infringe someone's intellectual property.", "long": true },
+      { "key": "customerCoveredClaims", "label": "Customer Covered Claims", "hint": "Third-party claims the Customer defends the Provider against, e.g. claims arising from materials the Customer provides.", "long": true },
+      { "key": "additionalWarranties", "label": "Additional Warranties", "hint": "Any warranties beyond the standard ones.", "default": "None" },
+      { "key": "insuranceMinimums", "label": "Insurance Minimums", "hint": "Insurance each party must carry, if any.", "default": "None" },
+      { "key": "securityPolicy", "label": "Security Policy", "hint": "Security requirements the Provider must follow, if any.", "default": "None" },
+      { "key": "dpa", "label": "DPA", "hint": "The parties' data processing agreement, if any.", "default": "None" }
+    ]
+  },
+  {
+    "id": "partnership",
+    "name": "Partnership Agreement",
+    "shortName": "Partnership Agreement",
+    "description": "For a business partnership between two companies: each party's obligations, fees, trademark licensing, confidentiality, liability and indemnification.",
+    "standardTerms": "Partnership-Agreement.md",
+    "parties": ["Company", "Partner"],
+    "governingLaw": true,
+    "terms": [
+      { "key": "obligations", "label": "Obligations", "hint": "What each party will do, e.g. the Partner refers customers and the Company provides sales training.", "required": true, "long": true },
+      { "key": "territory", "label": "Territory", "hint": "Where the partnership applies, e.g. the United States.", "required": true },
+      { "key": "endDate", "label": "End Date", "hint": "When the agreement ends, e.g. 2 years after the Effective Date.", "required": true },
+      { "key": "fees", "label": "Fees", "hint": "Fees either party pays the other, e.g. a 20% referral fee on first-year revenue.", "default": "None" },
+      { "key": "paymentProcess", "label": "Payment Process", "hint": "How fees are billed, e.g. invoiced monthly." },
+      { "key": "paymentSchedule", "label": "Payment Schedule", "hint": "When fees are paid, e.g. within 30 days of the invoice." },
+      { "key": "brandGuidelines", "label": "Brand Guidelines", "hint": "Rules for using each other's brand, if any.", "default": "None" },
+      { "key": "generalCapAmount", "label": "General Cap Amount", "hint": "Each party's maximum total liability, e.g. $100,000.", "required": true },
+      { "key": "increasedCapAmount", "label": "Increased Cap Amount", "hint": "A higher cap for Increased Claims, if any.", "default": "None" },
+      { "key": "increasedClaims", "label": "Increased Claims", "hint": "Claims subject to the Increased Cap Amount, if any.", "default": "None" },
+      { "key": "unlimitedClaims", "label": "Unlimited Claims", "hint": "Claims with no liability cap, if any.", "default": "None" },
+      { "key": "companyCoveredClaims", "label": "Company Covered Claims", "hint": "Third-party claims the Company defends the Partner against.", "long": true },
+      { "key": "partnerCoveredClaims", "label": "Partner Covered Claims", "hint": "Third-party claims the Partner defends the Company against.", "long": true },
+      { "key": "additionalWarranties", "label": "Additional Warranties", "hint": "Any warranties beyond the standard ones.", "default": "None" },
+      { "key": "dpa", "label": "DPA", "hint": "The parties' data processing agreement, if any.", "default": "None" }
+    ]
+  },
+  {
+    "id": "baa",
+    "name": "Business Associate Agreement",
+    "shortName": "BAA",
+    "description": "Sets out HIPAA obligations for a provider that creates, receives, maintains or transmits protected health information (PHI) for a covered entity.",
+    "standardTerms": "BAA.md",
+    "parties": ["Provider", "Company"],
+    "effectiveDateLabel": "BAA Effective Date",
+    "governingLaw": false,
+    "terms": [
+      { "key": "agreement", "label": "Agreement", "hint": "The underlying agreement under which the Provider handles PHI, e.g. the Cloud Service Agreement between the parties dated January 5, 2027.", "required": true },
+      { "key": "breachNotificationPeriod", "label": "Breach Notification Period", "hint": "How soon the Provider must report a breach, e.g. 5 business days after discovery.", "required": true },
+      { "key": "limitations", "label": "Limitations", "hint": "Limits on how the Provider may use or disclose PHI, e.g. no offshore subcontractors.", "default": "None" }
+    ]
+  },
+  {
+    "id": "software-license",
+    "name": "Software License Agreement",
+    "shortName": "Software License",
+    "description": "For licensing software that the customer installs on systems it owns or controls: license grant, restrictions, support, payment, warranties, liability and indemnification.",
+    "standardTerms": "Software-License-Agreement.md",
+    "parties": ["Provider", "Customer"],
+    "governingLaw": true,
+    "terms": [
+      { "key": "software", "label": "Software", "hint": "The software being licensed.", "required": true },
+      { "key": "orderDate", "label": "Order Date", "hint": "When the first order starts, e.g. the Effective Date.", "required": true },
+      { "key": "subscriptionPeriod", "label": "Subscription Period", "hint": "How long each license term lasts, e.g. 1 year from the Order Date.", "required": true },
+      { "key": "permittedUses", "label": "Permitted Uses", "hint": "What the Customer may use the Software for, e.g. its internal business purposes.", "required": true },
+      { "key": "licenseLimits", "label": "License Limits", "hint": "Usage limits, e.g. up to 50 named users.", "required": true },
+      { "key": "fees", "label": "Fees", "hint": "License fees, e.g. $30,000 per year.", "required": true },
+      { "key": "paymentProcess", "label": "Payment Process", "hint": "How fees are paid, e.g. invoiced annually, payable within 30 days." },
+      { "key": "nonRenewalNoticeDate", "label": "Non-Renewal Notice Date", "hint": "Deadline for giving notice of non-renewal, e.g. 30 days before the end of the current Subscription Period.", "required": true },
+      { "key": "warrantyPeriod", "label": "Warranty Period", "hint": "How long the Software is warranted to work as documented, e.g. 90 days from delivery." },
+      { "key": "deletionProcedure", "label": "Deletion Procedure", "hint": "How the Customer removes the Software when the agreement ends, e.g. uninstall it and certify deletion within 30 days." },
+      { "key": "generalCapAmount", "label": "General Cap Amount", "hint": "Each party's maximum total liability, e.g. the fees paid or payable in the 12 months before the claim.", "required": true },
+      { "key": "increasedCapAmount", "label": "Increased Cap Amount", "hint": "A higher cap for Increased Claims, if any.", "default": "None" },
+      { "key": "increasedClaims", "label": "Increased Claims", "hint": "Claims subject to the Increased Cap Amount, if any.", "default": "None" },
+      { "key": "unlimitedClaims", "label": "Unlimited Claims", "hint": "Claims with no liability cap, if any.", "default": "None" },
+      { "key": "providerCoveredClaims", "label": "Provider Covered Claims", "hint": "Third-party claims the Provider defends the Customer against, e.g. claims that the Software infringes someone's intellectual property.", "long": true },
+      { "key": "customerCoveredClaims", "label": "Customer Covered Claims", "hint": "Third-party claims the Customer defends the Provider against.", "long": true },
+      { "key": "additionalWarranties", "label": "Additional Warranties", "hint": "Any warranties beyond the standard ones.", "default": "None" }
+    ]
+  },
+  {
+    "id": "pilot",
+    "name": "Pilot Agreement",
+    "shortName": "Pilot Agreement",
+    "description": "For a short trial or evaluation that lets a prospective customer test a product before committing to a full commercial agreement.",
+    "standardTerms": "Pilot-Agreement.md",
+    "parties": ["Provider", "Customer"],
+    "governingLaw": true,
+    "terms": [
+      { "key": "product", "label": "Product", "hint": "The product being piloted.", "required": true },
+      { "key": "pilotPeriod", "label": "Pilot Period", "hint": "How long the pilot lasts, e.g. 60 days from the Effective Date.", "required": true },
+      { "key": "generalCapAmount", "label": "General Cap Amount", "hint": "Each party's maximum total liability, e.g. $10,000.", "required": true }
+    ]
+  },
+  {
+    "id": "ai-addendum",
+    "name": "AI Addendum",
+    "shortName": "AI Addendum",
+    "description": "Adds terms for AI services to a commercial agreement: ownership and use of inputs and outputs, limits on training models with customer data, and AI-specific disclaimers.",
+    "standardTerms": "AI-Addendum.md",
+    "parties": ["Provider", "Customer"],
+    "governingLaw": false,
+    "terms": [
+      { "key": "agreement", "label": "Agreement", "hint": "The commercial agreement this addendum supplements, e.g. the Cloud Service Agreement between the parties dated January 5, 2027.", "required": true },
+      { "key": "trainingData", "label": "Training Data", "hint": "Customer data the Provider may use to train models. None means no training is allowed.", "required": true, "default": "None" },
+      { "key": "trainingPurposes", "label": "Training Purposes", "hint": "What models may be trained for, if training is allowed.", "default": "None" },
+      { "key": "trainingRestrictions", "label": "Training Restrictions", "hint": "Limits on training, e.g. data must be de-identified first.", "default": "None" },
+      { "key": "improvementRestrictions", "label": "Improvement Restrictions", "hint": "Limits on using inputs and outputs to improve the service without training.", "default": "None" }
+    ]
+  }
+]

@@ -1,6 +1,7 @@
 "use client";
 
-import { LONG_TEXT_MAX, SHORT_TEXT_MAX, isValidYears, type NdaValues, type Party } from "@/lib/nda";
+import { PartyFields } from "@/components/PartyFields";
+import { LONG_TEXT_MAX, SHORT_TEXT_MAX, isValidYears, type NdaValues } from "@/lib/nda";
 import { Section, TextField, controlClass, labelClass } from "@/components/ui/fields";
 
 /**
@@ -78,39 +79,6 @@ function TermChoice<T extends string>({
       </div>
       {hint && <p className="text-xs text-slate-500">{hint}</p>}
     </fieldset>
-  );
-}
-
-function PartyFields({
-  id,
-  title,
-  party,
-  onChange,
-}: {
-  id: string;
-  title: string;
-  party: Party;
-  onChange: (party: Party) => void;
-}) {
-  const set = (field: keyof Party) => (value: string) => onChange({ ...party, [field]: value });
-
-  return (
-    <Section title={title}>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <TextField id={`${id}-name`} label="Print name" maxLength={SHORT_TEXT_MAX} value={party.name} onChange={set("name")} />
-        <TextField id={`${id}-title`} label="Title" maxLength={SHORT_TEXT_MAX} value={party.title} onChange={set("title")} />
-      </div>
-      <TextField id={`${id}-company`} label="Company" maxLength={SHORT_TEXT_MAX} value={party.company} onChange={set("company")} />
-      <TextField
-        id={`${id}-address`}
-        label="Notice address"
-        hint="Use either an email or a postal address."
-        rows={2}
-        maxLength={SHORT_TEXT_MAX}
-        value={party.noticeAddress}
-        onChange={set("noticeAddress")}
-      />
-    </Section>
   );
 }
 

@@ -176,14 +176,3 @@ export function fillCoverPage(template: string, values: NdaValues): string {
   );
   return source.replace(pattern, (match) => replacements.get(match)!);
 }
-
-/** A filesystem-safe PDF filename based on the parties' companies. */
-export function pdfFilename(values: NdaValues): string {
-  const slug = (s: string) =>
-    s
-      .trim()
-      .replace(/[^a-zA-Z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "");
-  const parts = [values.party1.company, values.party2.company].map(slug).filter(Boolean);
-  return ["Mutual-NDA", ...parts].join("-") + ".pdf";
-}

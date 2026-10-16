@@ -1,14 +1,15 @@
 /**
- * Renders the filled NDA Markdown as a PDF with @react-pdf/renderer.
+ * Renders a filled agreement's Markdown as a PDF with @react-pdf/renderer.
  *
  * It walks the same `marked` tokens the HTML preview is built from, and
  * supports the subset of Markdown used by the Common Paper templates:
- * headings, paragraphs, ordered lists, tables, bold text, links and the
- * templates' inline `<label>`, `<span>` and `<br>` tags.
+ * headings, paragraphs, nested ordered lists (numbered 1, 1.1, ...), tables,
+ * bold text, links and the templates' inline `<label>`, `<span>` and `<br>` tags.
  */
 import { Document, Link, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
-import { marked, type Token, type Tokens } from "marked";
+import type { Token, Tokens } from "marked";
 import type { ReactNode } from "react";
+import { lexMarkdown } from "@/lib/documents";
 
 const styles = StyleSheet.create({
   page: {
@@ -33,6 +34,7 @@ const styles = StyleSheet.create({
   link: { color: "#1d4ed8", textDecoration: "underline" },
   listItem: { flexDirection: "row", marginBottom: 4 },
   listNumber: { width: 20 },
+  nestedListNumber: { width: 30 },
   listBody: { flex: 1 },
   table: { marginTop: 8, marginBottom: 12, borderTop: "1pt solid #9ca3af", borderLeft: "1pt solid #9ca3af" },
   row: { flexDirection: "row" },
@@ -55,10 +57,15 @@ const styles = StyleSheet.create({
   },
 });
 
-/** Renders inline tokens. `<label>…</label>` content is shown as muted hint text. */
+/**
+ * Renders inline tokens. `<label>…</label>` content is shown as muted hint
+ * text, and clause headings (`<span class="header_2|header_3">`) in bold.
+ */
 function renderInline(tokens: Token[] = []): ReactNode[] {
   const nodes: ReactNode[] = [];
   let inLabel = false;
+  // Whether each open <span> is a heading; other spans (e.g. "coverpage_link") only carry styling hooks.
+  const spans: boolean[] = [];
 
   tokens.forEach((token, i) => {
     switch (token.type) {
@@ -67,7 +74,8 @@ function renderInline(tokens: Token[] = []): ReactNode[] {
         if (tag.startsWith("<br")) nodes.push("\n");
         else if (tag.startsWith("<label")) inLabel = true;
         else if (tag.startsWith("</label")) inLabel = false;
-        // Other tags (e.g. <span class="coverpage_link">) only carry styling hooks.
+        else if (tag.startsWith("<span")) spans.push(/class="header_\d"/.test(tag));
+        else if (tag.startsWith("</span")) spans.pop();
         return;
       }
       case "br":
@@ -91,9 +99,10 @@ function renderInline(tokens: Token[] = []): ReactNode[] {
       default: {
         // Text, escaped characters, inline code and any other leaf with text.
         const content = "tokens" in token && token.tokens ? renderInline(token.tokens) : "text" in token ? token.text : "";
+        const style = inLabel ? styles.label : spans.includes(true) ? styles.bold : undefined;
         nodes.push(
-          inLabel ? (
-            <Text key={i} style={styles.label}>
+          style ? (
+            <Text key={i} style={style}>
               {content}
             </Text>
           ) : (
@@ -127,7 +136,8 @@ function renderTable(table: Tokens.Table, key: number) {
   );
 }
 
-function renderBlocks(tokens: Token[]): ReactNode[] {
+/** `parent` is the number of the list item these blocks belong to, e.g. "1" or "1.2". */
+function renderBlocks(tokens: Token[], parent = ""): ReactNode[] {
   return tokens.map((token, i) => {
     switch (token.type) {
       case "space":
@@ -147,13 +157,21 @@ function renderBlocks(tokens: Token[]): ReactNode[] {
         const start = typeof list.start === "number" ? list.start : 1;
         return (
           <View key={i}>
-            {list.items.map((item, j) => (
-              // Each clause fits on a page, so never split one across pages.
-              <View key={j} style={styles.listItem} wrap={false}>
-                <Text style={styles.listNumber}>{list.ordered ? `${start + j}.` : "•"}</Text>
-                <View style={styles.listBody}>{renderBlocks(item.tokens)}</View>
-              </View>
-            ))}
+            {list.items.map((item, j) => {
+              // "1." at the top level and "1.1" when nested, as in the preview.
+              const number = parent ? `${parent}.${start + j}` : `${start + j}`;
+              // A single clause fits on a page, so it is never split across
+              // pages; a section with sub-clauses may be.
+              const isClause = !item.tokens.some((child) => child.type === "list");
+              return (
+                <View key={j} style={styles.listItem} wrap={!isClause}>
+                  <Text style={parent ? styles.nestedListNumber : styles.listNumber}>
+                    {list.ordered ? (parent ? number : `${number}.`) : "•"}
+                  </Text>
+                  <View style={styles.listBody}>{renderBlocks(item.tokens, number)}</View>
+                </View>
+              );
+            })}
           </View>
         );
       }
@@ -170,10 +188,10 @@ function renderBlocks(tokens: Token[]): ReactNode[] {
   });
 }
 
-function NdaPage({ markdown, title }: { markdown: string; title: string }) {
+function AgreementPage({ markdown, title }: { markdown: string; title: string }) {
   return (
     <Page size="LETTER" style={styles.page}>
-      <View style={styles.body}>{renderBlocks(marked.lexer(markdown))}</View>
+      <View style={styles.body}>{renderBlocks(lexMarkdown(markdown))}</View>
       <Text
         style={styles.footer}
         fixed
@@ -183,17 +201,23 @@ function NdaPage({ markdown, title }: { markdown: string; title: string }) {
   );
 }
 
-export function NdaPdfDocument({
+export function AgreementPdf({
+  name,
+  shortName,
   coverPage,
   standardTerms,
 }: {
+  /** The agreement's full name, e.g. "Mutual Non-Disclosure Agreement". */
+  name: string;
+  /** Used in the page footers, e.g. "Mutual NDA". */
+  shortName: string;
   coverPage: string;
   standardTerms: string;
 }) {
   return (
-    <Document title="Mutual Non-Disclosure Agreement" author="Prelegal" creator="Prelegal">
-      <NdaPage markdown={coverPage} title="Mutual NDA Cover Page" />
-      <NdaPage markdown={standardTerms} title="Mutual NDA Standard Terms" />
+    <Document title={name} author="Prelegal" creator="Prelegal">
+      <AgreementPage markdown={coverPage} title={`${shortName} Cover Page`} />
+      <AgreementPage markdown={standardTerms} title={`${shortName} Standard Terms`} />
     </Document>
   );
 }
