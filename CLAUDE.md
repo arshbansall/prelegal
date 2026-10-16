@@ -62,16 +62,16 @@ These are Tailwind theme tokens in `frontend/src/app/globals.css`: `accent`, `pr
 
 Done:
 - **PL-6:** `templates/` holds the Common Paper agreement templates (CC BY 4.0) with `templates/LICENSE.txt`; `catalog.json` indexes them.
-- **PL-7:** Mutual NDA creator at `/`. Form → live preview → PDF generated in the browser (`@react-pdf/renderer`). It reads the two Mutual NDA templates from `../templates` at build time. Logic is in `frontend/src/lib/nda.ts`.
+- **PL-7:** Mutual NDA creator at `/`. Form → live preview → PDF generated in the browser (`@react-pdf/renderer`). It reads the two Mutual NDA templates from `../templates` at build time. Logic is in `frontend/src/lib/nda.ts`. (Generalized to every agreement in PL-10.)
 - **PL-8:** V1 foundation.
   - `backend/`: FastAPI + SQLAlchemy over SQLite (Python 3.13, uv). The database is recreated on every startup and has a `users` table. Endpoints: `GET /api/health` and `POST /api/auth/login`. All other paths serve `frontend/out`.
   - Sign-in is a placeholder: any password is accepted and the user is created on first sign-in. The browser keeps `{id, email}` in localStorage. Pages in `frontend/src/app/(app)/` require sign-in (checked in the browser) and share the app shell; `/login/` is the sign-in page.
   - `Dockerfile` (one container on :8000, non-root, `.env` passed at runtime) and the `scripts/` start/stop scripts. Stopping removes the container, so each start has a fresh database.
 - **PL-9:** AI chat fills in the Mutual NDA. The left panel of `/` has a Chat tab (default) and a Fields tab (the PL-7 form, still editable); the preview and PDF are unchanged.
   - `POST /api/chat` is stateless: the browser sends the conversation, the current NDA values and its local date, and gets back `{reply, updates, complete}`. `updates` holds only the changed fields; the server computes `complete` from the required fields. The chat lives in memory only.
-  - `backend/app/llm.py` is the only module that calls the LLM (`structured_completion`, raising `LLMUnavailable` → 503 or `LLMError` → 502). `backend/app/nda_chat.py` has the system prompt and the required fields; the request/response and Structured Outputs models are in `schemas.py`. `OPENROUTER_API_KEY` is read by `Settings` from the environment or the repo's `.env`.
+  - `backend/app/llm.py` is the only module that calls the LLM (`structured_completion`, raising `LLMUnavailable` → 503 or `LLMError` → 502). Since PL-10 the prompt and turn logic are in `backend/app/drafting.py`, and `nda_chat.py` keeps only the NDA's fields and required-field rules; the request/response and Structured Outputs base models are in `schemas.py`. `OPENROUTER_API_KEY` is read by `Settings` from the environment or the repo's `.env`.
   - Frontend: `components/ui/Tabs.tsx`, `lib/chat.ts`; `applyNdaUpdates` in `lib/nda.ts`. The chat components were generalized in PL-10.
-- **PL-10:** Every agreement in `catalog.json` can be drafted, and the page no longer scrolls as a whole.
+- **PL-10** (merged to `main`, PR #8): Every agreement in `catalog.json` can be drafted, and the page no longer scrolls as a whole.
   - `documents.json` (repo root) defines each agreement: id, names, templates, party roles, whether it has governing law, and its key `terms`. The backend loads it at startup (`app/documents.py`; `PRELEGAL_DOCUMENTS_PATH` in Docker) and the frontend reads it at build time (`readDocuments` in `lib/templates.ts`). Tests keep it consistent with `catalog.json` and with the variables each template highlights.
   - The Mutual NDA keeps its typed fields and Common Paper's own cover page (`nda_chat.py`, `lib/nda.ts`, `NdaForm`). The others get a generated cover page (`buildCoverPage` in `lib/documents.ts`) and a form generated from their terms (`AgreementForm`).
   - Values: one `DocumentValues` = the NDA fields + `terms` (by key) for the other agreements. The parties, effective date, governing law and jurisdiction are shared and carried over when switching agreements (`switchDocument` in `lib/documents.ts`, `switch_document` in `drafting.py`).
@@ -89,4 +89,5 @@ Commands:
 Conventions:
 - New API routes go in `backend/app/routers/` under the `/api` prefix; new models go in `backend/app/models.py`. Call LLMs through `backend/app/llm.py`, and mock `app.llm.completion` in tests.
 - New signed-in pages go in `frontend/src/app/(app)/`. Call the API through `frontend/src/lib/api.ts` with relative `/api/...` paths. Shared form controls are in `frontend/src/components/ui/fields.tsx`.
+- To add an agreement: put its template in `templates/`, list it in `catalog.json`, and add an entry to `documents.json` whose `terms` cover every variable the template highlights (`backend/tests/test_documents.py` checks this). Agreements without a cover page template get a generated one, a form and a Structured Outputs model automatically.
 - `frontend/` is Next.js 16: read `frontend/AGENTS.md` and the bundled docs before changing it. Static export means no server components that need a request, no route handlers or server actions, and no middleware.
