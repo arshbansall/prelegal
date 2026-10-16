@@ -1,62 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
 import { isValidYears, type NdaValues, type Party } from "@/lib/nda";
-
-const controlClass =
-  "rounded-md border border-slate-300 bg-white text-sm text-slate-900 shadow-sm " +
-  "focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 " +
-  "disabled:bg-slate-100 disabled:text-slate-400 aria-invalid:border-red-500";
-
-const legendClass = "text-sm font-medium text-slate-700";
-
-function Section({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="space-y-4 border-t border-slate-200 pt-5 first:border-t-0 first:pt-0">
-      <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500">{title}</h2>
-      {children}
-    </section>
-  );
-}
-
-function TextField({
-  id,
-  label,
-  hint,
-  value,
-  onChange,
-  rows,
-}: {
-  id: string;
-  label: string;
-  hint?: string;
-  value: string;
-  onChange: (value: string) => void;
-  /** Renders a textarea with this many rows instead of a single-line input. */
-  rows?: number;
-}) {
-  const props = {
-    id,
-    value,
-    onChange: (e: { target: { value: string } }) => onChange(e.target.value),
-    "aria-describedby": hint ? `${id}-hint` : undefined,
-    className: `${controlClass} w-full px-3 py-2`,
-  };
-
-  return (
-    <div className="space-y-1">
-      <label htmlFor={id} className={legendClass}>
-        {label}
-      </label>
-      {rows ? <textarea rows={rows} {...props} /> : <input autoComplete="off" {...props} />}
-      {hint && (
-        <p id={`${id}-hint`} className="text-xs text-slate-500">
-          {hint}
-        </p>
-      )}
-    </div>
-  );
-}
+import { Section, TextField, controlClass, labelClass } from "@/components/ui/fields";
 
 /**
  * A two-option term choice: a whole number of years, or an open-ended
@@ -88,7 +33,7 @@ function TermChoice<T extends string>({
 
   return (
     <fieldset className="space-y-2">
-      <legend className={legendClass}>{legend}</legend>
+      <legend className={labelClass}>{legend}</legend>
       <div className="flex flex-wrap items-center gap-2 text-sm text-slate-700">
         <input
           type="radio"
@@ -96,7 +41,7 @@ function TermChoice<T extends string>({
           name={id}
           checked={usesYears}
           onChange={() => onChange(yearsOption.value)}
-          className="accent-indigo-600"
+          className="accent-secondary"
         />
         <label htmlFor={`${id}-years`}>{yearsOption.label}</label>
         <input
@@ -127,7 +72,7 @@ function TermChoice<T extends string>({
           name={id}
           checked={!usesYears}
           onChange={() => onChange(otherOption.value)}
-          className="accent-indigo-600"
+          className="accent-secondary"
         />
         <label htmlFor={`${id}-other`}>{otherOption.label}</label>
       </div>
@@ -192,18 +137,13 @@ export function NdaForm({
           onChange={set("purpose")}
         />
 
-        <div className="space-y-1">
-          <label htmlFor="effectiveDate" className={legendClass}>
-            Effective date
-          </label>
-          <input
-            id="effectiveDate"
-            type="date"
-            className={`${controlClass} w-full px-3 py-2`}
-            value={values.effectiveDate}
-            onChange={(e) => set("effectiveDate")(e.target.value)}
-          />
-        </div>
+        <TextField
+          id="effectiveDate"
+          label="Effective date"
+          type="date"
+          value={values.effectiveDate}
+          onChange={set("effectiveDate")}
+        />
 
         <TermChoice
           id="mndaTerm"
