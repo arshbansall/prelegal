@@ -1,5 +1,8 @@
+import type { Metadata } from "next";
 import { NdaCreator } from "@/components/NdaCreator";
 import { readTemplate } from "@/lib/templates";
+
+export const metadata: Metadata = { title: "Mutual NDA Creator" };
 
 export default function Home() {
   return (

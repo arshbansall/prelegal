@@ -1,0 +1,16 @@
+# Secrets are passed at runtime (--env-file), never baked into the image.
+.env
+.env.*
+
+.git
+.claude
+
+# Dependencies and build output are recreated inside the image.
+**/node_modules
+**/.next
+frontend/out
+**/.venv
+**/__pycache__
+**/.pytest_cache
+backend/data
+*.db

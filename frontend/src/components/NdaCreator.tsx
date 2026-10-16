@@ -3,6 +3,7 @@
 import { useState, useSyncExternalStore } from "react";
 import { NdaForm } from "@/components/NdaForm";
 import { NdaPreview } from "@/components/NdaPreview";
+import { Button } from "@/components/ui/fields";
 import { defaultNdaValues, fillCoverPage, pdfFilename, type NdaValues } from "@/lib/nda";
 
 const noopSubscribe = () => () => {};
@@ -66,33 +67,22 @@ export function NdaCreator({
   }
 
   return (
-    <div className="flex min-h-full flex-col bg-slate-50">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6">
-          <div>
-            <p className="text-sm font-semibold tracking-tight text-indigo-600">Prelegal</p>
-            <h1 className="text-xl font-semibold text-slate-900">Mutual NDA Creator</h1>
-          </div>
-          <div className="flex flex-col items-end gap-1">
-            <button
-              type="button"
-              onClick={downloadPdf}
-              disabled={status === "generating"}
-              aria-busy={status === "generating"}
-              className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:cursor-wait disabled:opacity-70"
-            >
-              {status === "generating" ? "Generating PDF…" : "Download PDF"}
-            </button>
-            {/* Always rendered so screen readers announce changes to its text. */}
-            <p role="status" className="min-h-4 text-xs text-red-600">
-              {status === "generating" && <span className="sr-only">Generating PDF…</span>}
-              {status === "error" && "Couldn’t generate the PDF. Please try again."}
-            </p>
-          </div>
+    <div className="flex flex-1 flex-col">
+      <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-4 px-4 pt-6 sm:px-6">
+        <h1 className="text-xl font-semibold text-navy">Mutual NDA Creator</h1>
+        <div className="flex flex-col items-end gap-1">
+          <Button type="button" onClick={downloadPdf} disabled={status === "generating"} aria-busy={status === "generating"}>
+            {status === "generating" ? "Generating PDF…" : "Download PDF"}
+          </Button>
+          {/* Always rendered so screen readers announce changes to its text. */}
+          <p role="status" className="min-h-4 text-xs text-red-600">
+            {status === "generating" && <span className="sr-only">Generating PDF…</span>}
+            {status === "error" && "Couldn’t generate the PDF. Please try again."}
+          </p>
         </div>
-      </header>
+      </div>
 
-      <main className="mx-auto grid w-full max-w-7xl flex-1 grid-cols-1 gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
+      <div className="mx-auto grid w-full max-w-7xl flex-1 grid-cols-1 gap-6 px-4 pb-6 pt-2 sm:px-6 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
         <section
           aria-label="NDA details"
           className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:self-start lg:overflow-y-auto"
@@ -110,7 +100,7 @@ export function NdaCreator({
         >
           <NdaPreview coverPage={coverPage} standardTerms={standardTerms} />
         </section>
-      </main>
+      </div>
     </div>
   );
 }

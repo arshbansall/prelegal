@@ -5,6 +5,17 @@
   --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
 }
 
+/* Brand palette (see CLAUDE.md). Generates utilities such as bg-secondary and text-navy.
+   Blue and gray are below 4.5:1 contrast on white: use them for accents, borders and
+   de-emphasized captions, not body text. */
+@theme {
+  --color-accent: #ecad0a;
+  --color-primary: #209dd7;
+  --color-secondary: #753991;
+  --color-navy: #032147;
+  --color-muted: #888888;
+}
+
 body {
   @apply bg-slate-50 font-sans text-slate-900;
 }
@@ -15,13 +26,13 @@ body {
     @apply font-serif text-[15px] leading-relaxed text-slate-800;
   }
   .nda-document h1 {
-    @apply mb-6 text-center text-2xl font-bold text-slate-900;
+    @apply mb-6 text-center text-2xl font-bold text-navy;
   }
   .nda-document h2 {
-    @apply mt-6 mb-3 text-sm font-bold tracking-wide text-slate-900;
+    @apply mt-6 mb-3 text-sm font-bold tracking-wide text-navy;
   }
   .nda-document h3 {
-    @apply mt-6 mb-1 font-bold text-slate-900;
+    @apply mt-6 mb-1 font-bold text-navy;
   }
   .nda-document p {
     @apply mb-3;
@@ -30,7 +41,7 @@ body {
     @apply block font-sans text-xs text-slate-500;
   }
   .nda-document a {
-    @apply text-indigo-700 underline underline-offset-2;
+    @apply text-navy underline decoration-primary underline-offset-2;
   }
   .nda-document ol {
     @apply list-decimal space-y-3 pl-6;

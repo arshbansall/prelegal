@@ -60,6 +60,7 @@ coverage.xml
 
 # Local databases
 *.db
+backend/data/
 *.sqlite
 *.sqlite3
 
